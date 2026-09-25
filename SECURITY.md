@@ -11,7 +11,7 @@ tagged release. Once v0.1.0 exists this table will name the versions that get
 fixes.
 
 | Version | Supported |
-|---|---|
+| ------- | --------- |
 | none yet | no |
 
 ## Reporting a vulnerability

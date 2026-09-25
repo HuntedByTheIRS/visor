@@ -9,7 +9,7 @@ Environment: V 0.5.2, commit `1b68924`, the compiler `v` resolves to on PATH
 is on PATH, which is why the pinned list is relative to it.
 
 | Command | Observed result | Date |
-|---|---|---|
+| --- | --- | --- |
 | `v -o /tmp/visor-corpus engine/corpus_test.v && /tmp/visor-corpus` | 30 files, 31,406 lines, 379,504 nodes, 34 `ERROR` nodes, 11 `MISSING` nodes, exit 0 | 2026-09-25 |
 | `v test engine/` | 4 test files, 10 test functions, `4 passed, 4 total`, exit 0 | 2026-09-25 |
 
@@ -32,7 +32,7 @@ measured compiler. None of them is a `_test.v` file, because the indexer skips
 those.
 
 | # | File (relative to vlib) | Lines | Nodes | ERROR | MISSING |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | 1 | `builtin/string.v` | 3246 | 32111 | 3 | 0 |
 | 2 | `builtin/array.v` | 1610 | 17706 | 2 | 0 |
 | 3 | `builtin/map.v` | 1032 | 12616 | 2 | 0 |

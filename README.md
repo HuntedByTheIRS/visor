@@ -36,7 +36,7 @@ that reshuffle everything underneath the language: V removed its V1 AST in
 September 2026, and every feature that used to ride the V1 compatibility
 compiler runs in-process here instead.
 
-```
+```text
   editor
   VS Code, VSCodium, Neovim, Vim
         |
@@ -81,7 +81,7 @@ today.
 ## Features, targeted for v0.1.0
 
 | Area | What ships |
-|---|---|
+| --- | --- |
 | Diagnostics | pushed and pulled, including over unsaved buffers |
 | Hover and completion | hover, completion, signature help |
 | Navigation | definition, declaration, type definition, implementation, references |
@@ -112,7 +112,7 @@ rather than quietly returning an empty result.
 Compiler discovery order, first match wins:
 
 | Order | Source |
-|---|---|
+| --- | --- |
 | 1 | `VISOR_V_COMMAND` |
 | 2 | `VEXE` |
 | 3 | `v` on `PATH` |
@@ -137,7 +137,7 @@ security reports go through `SECURITY.md`; `CODE_OF_CONDUCT.md` covers how
 people treat each other in all three places.
 
 | Document | What it covers |
-|---|---|
+| --- | --- |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | the build, the test and the review rules |
 | [`docs/architecture.md`](docs/architecture.md) | the modules, the hard rules, diagnostics scheduling |
 | [`ROADMAP.md`](ROADMAP.md) | what ships when, and the compiler floor |

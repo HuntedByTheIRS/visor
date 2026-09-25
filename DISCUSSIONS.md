@@ -8,7 +8,7 @@ committed to.
 ## Which category
 
 | Category | What belongs there |
-|---|---|
+| --- | --- |
 | Announcements | Release notes and changes that affect how you use visor. Maintainers post here; replies belong in General. |
 | Q&A | A question about visor: setup, editor wiring, an error you cannot explain. |
 | Ideas | Something visor should do, before anyone has shaped it into a plan. |

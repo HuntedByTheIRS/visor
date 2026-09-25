@@ -2,7 +2,7 @@
 
 ## Shape
 
-```
+```text
 editors/code (TypeScript, vscode-languageclient)   editors/nvim, editors/vim
                  \                                    /
                   \       JSON-RPC over stdio        /
