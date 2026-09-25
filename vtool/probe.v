@@ -164,9 +164,9 @@ fn expect_outline(kind CapabilityKind, r ExecResult) Capability {
 	return Capability{ kind: kind, status: .unsupported, detail: first_line(said) }
 }
 
-// expect_format needs the formatted spelling of the probe buffer, not just a
-// zero exit code, because a command that echoes its own arguments would satisfy
-// that much.
+// expect_format asks for the formatted spelling of the probe buffer. A zero
+// exit code does not carry that weight on its own: a command that echoes its
+// own arguments would satisfy it.
 fn expect_format(kind CapabilityKind, r ExecResult) Capability {
 	if r.spawn_err != '' {
 		return Capability{ kind: kind, status: .unknown, detail: r.spawn_err }

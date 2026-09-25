@@ -77,6 +77,9 @@ fn exec(cpath string, args []string, input string, work_folder string, merged bo
 	// broken pipe, which fd_write already swallows. visor is a server on a pipe
 	// of its own, so it wants a closed connection to surface as an error rather
 	// than as a silent death either way.
+	//
+	// The call sits after run() so that the child keeps the default
+	// disposition. Only the side doing the writing needs it masked.
 	os.signal_ignore(.pipe)
 	mut out := strings.new_builder(4096)
 	mut errs := strings.new_builder(1024)
