@@ -18,16 +18,20 @@ jobs:
           apt-get update -qq
           # nodejs is for actions/checkout. The image has no node, and a JS
           # action fails with exit 127 before the workflow gets anywhere.
-          apt-get install -y -qq git curl make gcc nodejs >/dev/null
+          apt-get install -y -qq git curl make gcc nodejs unzip >/dev/null
           node --version
 
       - name: Checkout visor
         uses: https://github.com/actions/checkout@v4
 
-      - name: Build the V compiler
+      - name: Install the V compiler
         run: |
-          git clone --depth 1 --branch "$V_TAG" https://github.com/vlang/v /opt/v
-          make -C /opt/v -j"$(nproc)"
+          # The release asset, not a source build. Building V from source with
+          # `make` trips the driver's own memory guard on this runner
+          # ("v3 compiler memory usage reached 9994 MiB RSS ... limit: 9984 MiB")
+          # during the v2 stage of cmd/v, and it costs minutes per run.
+          curl -fsSL -o /tmp/v.zip "https://github.com/vlang/v/releases/download/${V_TAG}/v_linux.zip"
+          unzip -q /tmp/v.zip -d /opt
           /opt/v/v version
           echo /opt/v >> "$GITHUB_PATH"
 
