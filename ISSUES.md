@@ -20,25 +20,13 @@ at the roadmap.
 - what you expected, and what happened instead
 - the server log, when the failure is not visible in the editor
 
-## Bug report template
+## The form
 
-    visor version:   (paste the output of `visor --version`)
-    V version:       (paste the output of `v version`)
-    editor:          (name and version)
-    platform:        (Linux distribution and architecture)
-
-    Steps to reproduce:
-    1.
-    2.
-
-    Expected:
-
-    Actual:
-
-    Server log:
-    (paste or attach)
-
-    Does it still happen with visor.vExecutablePath unset?:
+GitHub offers a bug form and a feature request form when you open an issue here.
+The bug form asks for the fields listed above, so you do not have to assemble
+them by hand. If a field does not apply, say so rather than leaving it blank.
+Blank issues are turned off, which is why there is no empty text box waiting for
+you.
 
 ## Feature requests
 
