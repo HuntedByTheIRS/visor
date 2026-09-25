@@ -10,7 +10,7 @@ pub struct TypeInitializer {
 }
 
 pub fn (n &TypeInitializer) get_type() types.Type {
-	return infer_type(n)
+	return infer_type(PsiElement(n))
 }
 
 pub fn (n &TypeInitializer) element_list() []PsiElement {

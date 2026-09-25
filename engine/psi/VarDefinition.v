@@ -42,7 +42,7 @@ pub fn (n &VarDefinition) declaration() ?&VarDeclaration {
 }
 
 pub fn (n &VarDefinition) get_type() types.Type {
-	return infer_type(n)
+	return infer_type(PsiElement(n))
 }
 
 pub fn (n &VarDefinition) mutability_modifiers() ?&MutabilityModifiers {
