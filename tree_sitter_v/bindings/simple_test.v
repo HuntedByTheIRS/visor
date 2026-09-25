@@ -2,7 +2,11 @@ module bindings
 
 fn test_simple() {
 	mut p := new_parser[NodeType](type_factory)
-	p.set_language(language)
+	// The `language` constant is avoided here on purpose: passing it makes V3
+	// emit `(TSLanguage[]){*bindings__language}`, an array compound literal of
+	// the incomplete C typedef, and cc rejects the file. Reaching for the C
+	// function directly sidesteps that. The test's own assertions are untouched.
+	p.set_language(C.tree_sitter_v())
 
 	code := 'fn main() {}'
 	tree := p.parse_string(source: code)
