@@ -43,13 +43,20 @@ pub mut:
 
 pub fn new_stubs_index(sinks []StubIndexSink) &StubIndex {
 	mut index := &StubIndex{
-		sinks:                   sinks
-		module_to_files:         map[string][]StubIndexSink{}
-		all_elements_by_modules: unsafe { [count_stub_index_location_keys]map[string][]PsiElement{} }
-		types_by_modules:        unsafe { [count_stub_index_location_keys]map[string][]PsiElement{} }
+		sinks:           sinks
+		module_to_files: map[string][]StubIndexSink{}
 	}
 
+	// The fixed arrays of maps and the lookup array are built here instead of in
+	// the literal, because V 0.5.2 miscompiles a fixed array of maps written as
+	// `unsafe { [n]map[...]{} }` inside a struct literal. It emits
+	// `memcpy(field, {new_map(...), ...}, sizeof(field))`: a bare brace list where
+	// C needs an expression, so cc rejects the file with "expected expression
+	// before '{'" and a memcpy arity error. Dropping `unsafe` fixes the C but
+	// warns about the late initialisation, so the arrays are filled by hand.
 	for i in 0 .. count_stub_index_location_keys {
+		index.all_elements_by_modules[i] = map[string][]PsiElement{}
+		index.types_by_modules[i] = map[string][]PsiElement{}
 		for j in 0 .. count_index_keys {
 			index.data[i][j] = map[string]StubResult{}
 		}
