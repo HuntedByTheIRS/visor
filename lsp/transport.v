@@ -12,10 +12,30 @@ pub fn (mut s StdoutSink) send(message string) {
 	os.fd_write(1, format_frame(message))
 }
 
+#include <unistd.h>
+
+// RawStdin reads file descriptor 0 with the read syscall. Going through os.File
+// would use libc's fread, and fread on a pipe keeps reading until it has the
+// whole requested count or the stream ends: an editor that sends one frame and
+// waits for the reply would wait for the reply that cannot come. One read
+// syscall returns whatever bytes are there.
+//
+// Only the POSIX read is wired. A Windows port needs _read from io.h, and
+// nothing in this repository builds for Windows yet.
+struct RawStdin {}
+
+fn (mut r RawStdin) read(mut buf []u8) !int {
+	n := int(C.read(0, buf.data, usize(buf.len)))
+	if n <= 0 {
+		return error('the client closed its end of the stream')
+	}
+	return n
+}
+
 // serve_stdio runs the protocol loop on standard input and output and returns
 // the code the process should exit with.
 pub fn serve_stdio(version string) int {
-	mut input := os.stdin()
+	mut input := RawStdin{}
 	mut reader := new_frame_reader(io.Reader(&input))
 	mut sink := &StdoutSink{}
 	mut server := new_server(sink)
