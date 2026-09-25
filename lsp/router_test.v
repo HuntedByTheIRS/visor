@@ -2,21 +2,6 @@ module lsp
 
 import json2
 
-// CaptureSink stands in for the stdio transport in tests and keeps what the
-// server said instead of writing it anywhere.
-struct CaptureSink {
-mut:
-	messages []string
-}
-
-fn (mut c CaptureSink) send(message string) {
-	c.messages << message
-}
-
-fn (mut c CaptureSink) last() Message {
-	return parse_message(c.messages[c.messages.len - 1])
-}
-
 fn handler_echo(mut _ Server, req Message) Reply {
 	return ok(json2.Any('echoed ${req.method}'))
 }
@@ -25,13 +10,27 @@ fn handler_fails(mut _ Server, _ Message) Reply {
 	return fail(code_internal_error, 'the handler gave up')
 }
 
-fn test_routes_a_request_to_its_handler() {
-	mut sink := &CaptureSink{}
+// server_ready_for_requests returns a session past initialize, with the sink
+// emptied of the handshake, because the router only runs once a session is
+// open.
+fn server_ready_for_requests() (&BufferSink, &Server) {
+	mut sink := &BufferSink{}
 	mut s := new_server(sink)
+	s.serve_message(parse_message('{"jsonrpc":"2.0","id":100,"method":"initialize","params":' +
+		'{"capabilities":{"textDocument":{"synchronization":{}}}}}'))
+	sink.messages = []
+	// the handshake is not what these tests count.
+	s.requests_answered = 0
+	s.notifications_handled = 0
+	return sink, s
+}
+
+fn test_routes_a_request_to_its_handler() {
+	sink, mut s := server_ready_for_requests()
 	s.on('visor/echo', handler_echo)
 	s.serve_message(parse_message('{"jsonrpc":"2.0","id":1,"method":"visor/echo"}'))
 	assert sink.messages.len == 1
-	m := sink.last()
+	m := sink.last_message()
 	assert m.kind == .response
 	assert m.id_key() == 'n:1'
 	assert m.result.str() == 'echoed visor/echo'
@@ -39,21 +38,19 @@ fn test_routes_a_request_to_its_handler() {
 }
 
 fn test_unknown_method_is_method_not_found() {
-	mut sink := &CaptureSink{}
-	mut s := new_server(sink)
+	sink, mut s := server_ready_for_requests()
 	s.serve_message(parse_message('{"jsonrpc":"2.0","id":2,"method":"textDocument/hover"}'))
 	assert sink.messages.len == 1
-	m := sink.last()
+	m := sink.last_message()
 	assert m.error_code == code_method_not_found
 	assert m.error_text.contains('textDocument/hover')
 }
 
 fn test_a_stub_answers_with_a_request_failed_and_names_the_owner() {
-	mut sink := &CaptureSink{}
-	mut s := new_server(sink)
+	sink, mut s := server_ready_for_requests()
 	s.stub('textDocument/diagnostic', 'the diag lane')
 	s.serve_message(parse_message('{"jsonrpc":"2.0","id":3,"method":"textDocument/diagnostic"}'))
-	m := sink.last()
+	m := sink.last_message()
 	// a stub is an error, not an empty success: the editor has to be able to
 	// tell that the answer did not come from a working feature.
 	assert m.error_code == code_request_failed
@@ -62,19 +59,17 @@ fn test_a_stub_answers_with_a_request_failed_and_names_the_owner() {
 }
 
 fn test_a_handler_error_keeps_the_client_id() {
-	mut sink := &CaptureSink{}
-	mut s := new_server(sink)
+	sink, mut s := server_ready_for_requests()
 	s.on('visor/fail', handler_fails)
 	s.serve_message(parse_message('{"jsonrpc":"2.0","id":"abc","method":"visor/fail"}'))
-	m := sink.last()
+	m := sink.last_message()
 	assert m.error_code == code_internal_error
 	assert m.id_key() == 's:abc'
 	assert m.error_text == 'the handler gave up'
 }
 
 fn test_a_notification_is_handled_without_a_reply() {
-	mut sink := &CaptureSink{}
-	mut s := new_server(sink)
+	sink, mut s := server_ready_for_requests()
 	s.on('visor/note', handler_echo)
 	s.serve_message(parse_message('{"jsonrpc":"2.0","method":"visor/note"}'))
 	assert sink.messages.len == 0
@@ -82,22 +77,20 @@ fn test_a_notification_is_handled_without_a_reply() {
 }
 
 fn test_a_notification_for_an_unknown_method_is_ignored() {
-	mut sink := &CaptureSink{}
-	mut s := new_server(sink)
+	sink, mut s := server_ready_for_requests()
 	s.serve_message(parse_message('{"jsonrpc":"2.0","method":"textDocument/willSave"}'))
 	assert sink.messages.len == 0
 }
 
 fn test_a_body_that_is_not_json_gets_a_parse_error() {
-	mut sink := &CaptureSink{}
-	mut s := new_server(sink)
+	sink, mut s := server_ready_for_requests()
 	s.serve_batch([
 		Frame{
 			kind: .message
 			body: '{not json'
 		},
 	])
-	m := sink.last()
+	m := sink.last_message()
 	assert m.error_code == code_parse_error
 	// JSON-RPC answers an unparsable body with a null id, since there is no
 	// request to name.
@@ -105,21 +98,19 @@ fn test_a_body_that_is_not_json_gets_a_parse_error() {
 }
 
 fn test_a_routable_body_without_a_method_gets_an_invalid_request() {
-	mut sink := &CaptureSink{}
-	mut s := new_server(sink)
+	sink, mut s := server_ready_for_requests()
 	s.serve_batch([
 		Frame{
 			kind: .message
 			body: '{"jsonrpc":"2.0"}'
 		},
 	])
-	m := sink.last()
+	m := sink.last_message()
 	assert m.error_code == code_invalid_request
 }
 
 fn test_a_malformed_frame_is_counted_and_skipped() {
-	mut sink := &CaptureSink{}
-	mut s := new_server(sink)
+	sink, mut s := server_ready_for_requests()
 	s.on('visor/echo', handler_echo)
 	s.serve_batch([
 		Frame{
@@ -134,11 +125,11 @@ fn test_a_malformed_frame_is_counted_and_skipped() {
 	// the bad frame is recorded, and the good frame behind it still runs.
 	assert s.refused_frames == 1
 	assert sink.messages.len == 1
-	assert sink.last().id_key() == 'n:4'
+	assert sink.last_message().id_key() == 'n:4'
 }
 
 fn test_a_lane_can_replace_a_stub() {
-	mut s := new_server(&CaptureSink{})
+	_, mut s := server_ready_for_requests()
 	s.stub('visor/echo', 'nobody')
 	assert s.router.knows('visor/echo')
 	s.on('visor/echo', handler_echo)

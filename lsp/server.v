@@ -1,5 +1,7 @@
 module lsp
 
+import json2
+
 // Sender is the sink the server writes encoded messages to. The stdio transport
 // writes a frame to file descriptor 1; a test hands in a collector and reads
 // what the server said.
@@ -18,6 +20,31 @@ pub enum ServerState {
 	shutting_down
 }
 
+// BufferSink collects messages instead of writing them. A test hands one to
+// new_server and reads what the server said; without it every test file would
+// carry its own copy of these twelve lines.
+pub struct BufferSink {
+pub mut:
+	messages []string
+}
+
+pub fn (mut b BufferSink) send(message string) {
+	b.messages << message
+}
+
+// last_message is the most recent message, or an invalid one when the server has
+// said nothing. A test that expected a reply and got none fails on the reason
+// rather than on an index.
+pub fn (b &BufferSink) last_message() Message {
+	if b.messages.len == 0 {
+		return Message{
+			kind:   .invalid
+			reason: 'the server sent nothing'
+		}
+	}
+	return parse_message(b.messages[b.messages.len - 1])
+}
+
 pub struct Server {
 mut:
 	router Router
@@ -26,21 +53,33 @@ mut:
 	// exit_now is set by the exit notification and read by the serve loop.
 	exit_now bool
 	// exit_code is what the process should exit with. It starts at 1 because
-	// exit without a shutdown is the failure path.
-	exit_code int
+	// exit without a shutdown is the failure path, and only handle_exit lowers
+	// it.
+	exit_code              int
+	client_caps            ClientCapabilities
+	client_name            string
+	client_ready           bool
+	server_version         string
+	negotiation_notes      []string
+	initialization_options json2.Any
+	settings               json2.Any
+	documents              DocumentStore
 pub mut:
 	// The counters exist so a test can assert that a message was dropped rather
 	// than answered, which is otherwise invisible from the outside.
 	requests_answered     int
 	notifications_handled int
 	refused_frames        int
+	workspace_folders     []WorkspaceFolder
 }
 
 pub fn new_server(sink Sender) &Server {
-	return &Server{
+	mut s := &Server{
 		sink:      sink
 		exit_code: 1
 	}
+	s.register_core()
+	return s
 }
 
 // on registers a handler for a method. Feature lanes call this with free
@@ -70,6 +109,38 @@ pub fn (s &Server) code_on_exit() int {
 	return s.exit_code
 }
 
+// set_version is what the executable passes down so the initialize reply can
+// name the build. The protocol core carries no version literal of its own.
+pub fn (mut s Server) set_version(version string) {
+	s.server_version = version
+}
+
+// client_announced is the capability view the client sent in initialize.
+pub fn (s &Server) client_announced() ClientCapabilities {
+	return s.client_caps
+}
+
+// is_ready reports that the client sent initialized.
+pub fn (s &Server) is_ready() bool {
+	return s.client_ready
+}
+
+// notes are the negotiation decisions, one line each.
+pub fn (s &Server) notes() []string {
+	return s.negotiation_notes
+}
+
+// document reads a buffer out of the store, which is how a feature handler gets
+// the text it is asked about.
+pub fn (s &Server) document(uri string) ?TextDocument {
+	return s.documents.get(uri)
+}
+
+// open_documents lists the buffers the client has open.
+pub fn (s &Server) open_documents() []string {
+	return s.documents.uris()
+}
+
 // serve_batch works through one read batch. Frames arrive as a batch rather
 // than one at a time so that a $/cancelRequest written together with its
 // request is seen before the request is dispatched.
@@ -86,6 +157,16 @@ pub fn (mut s Server) serve_batch(frames []Frame) {
 }
 
 pub fn (mut s Server) serve_message(m Message) {
+	if refused := s.refuse_before_dispatch(m) {
+		// A request in the wrong phase gets an answer naming the phase. A
+		// notification in the wrong phase is dropped: the client is gone or not
+		// ready, and there is nobody to tell.
+		if m.kind == .request {
+			s.write(encode_error(m.id, refused.err_code, refused.err_text))
+			s.requests_answered++
+		}
+		return
+	}
 	match m.kind {
 		.request { s.serve_request(m) }
 		.notification { s.serve_notification(m) }
