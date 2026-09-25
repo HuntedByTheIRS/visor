@@ -70,7 +70,10 @@ pub mut:
 	requests_answered     int
 	notifications_handled int
 	refused_frames        int
-	workspace_folders     []WorkspaceFolder
+	// sync_refusals counts didChange notifications for a buffer the store does
+	// not have, which means the two sides disagree about what is open.
+	sync_refusals     int
+	workspace_folders []WorkspaceFolder
 }
 
 pub fn new_server(sink Sender) &Server {

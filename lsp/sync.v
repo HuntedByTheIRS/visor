@@ -1,0 +1,115 @@
+module lsp
+
+import json2
+
+// handle_did_open records a buffer the client has open. From here until
+// didClose, this store is the only copy of the file that exists.
+fn handle_did_open(mut s Server, req Message) Reply {
+	params := as_object(req.params) or { return ok(null_value()) }
+	item_value := params['textDocument'] or { return ok(null_value()) }
+	item := parse_text_document(item_value) or { return ok(null_value()) }
+	s.documents.open_document(item)
+	return ok(null_value())
+}
+
+// handle_did_change applies the ranged edits. Each change is measured against
+// the result of the previous one, and a change with no range replaces the
+// buffer, which is how a client that lost track resynchronises.
+fn handle_did_change(mut s Server, req Message) Reply {
+	params := as_object(req.params) or { return ok(null_value()) }
+	item_value := params['textDocument'] or { return ok(null_value()) }
+	item := parse_text_document(item_value) or { return ok(null_value()) }
+	changes_value := params['contentChanges'] or { return ok(null_value()) }
+	changes := parse_changes(changes_value) or { return ok(null_value()) }
+	s.documents.apply_changes(item.uri, item.version, changes) or {
+		// A change for a buffer that is not open means the open notification was
+		// lost or the two sides disagree about what is open. There is nothing to
+		// answer, so it is counted.
+		s.sync_refusals++
+		return ok(null_value())
+	}
+	return ok(null_value())
+}
+
+// handle_did_close drops the buffer. Anything a lane cached for it has to be
+// dropped with it, which the lanes do on the notification.
+fn handle_did_close(mut s Server, req Message) Reply {
+	params := as_object(req.params) or { return ok(null_value()) }
+	item_value := params['textDocument'] or { return ok(null_value()) }
+	item := parse_text_document(item_value) or { return ok(null_value()) }
+	s.documents.close_document(item.uri)
+	return ok(null_value())
+}
+
+// handle_did_save records a save. Most clients send no text with it, and the
+// buffer already holds the file.
+fn handle_did_save(mut s Server, req Message) Reply {
+	params := as_object(req.params) or { return ok(null_value()) }
+	item_value := params['textDocument'] or { return ok(null_value()) }
+	item := parse_text_document(item_value) or { return ok(null_value()) }
+	mut text := ''
+	if sent := params['text'] {
+		if sent is string {
+			text = sent as string
+		}
+	}
+	// a save for a buffer that is not open is a client bug, and one that did not
+	// arrive as a notification we can answer.
+	s.documents.save_document(item.uri, text)
+	return ok(null_value())
+}
+
+// handle_did_change_configuration stores the settings the client pushed. Whether
+// the server also polls for them depends on what the client advertised, which is
+// decided where the pull is sent.
+fn handle_did_change_configuration(mut s Server, req Message) Reply {
+	params := as_object(req.params) or { return ok(null_value()) }
+	if settings := params['settings'] {
+		s.settings = settings
+	}
+	return ok(null_value())
+}
+
+// handle_did_change_workspace_folders keeps the root list current. A folder that
+// was removed stops being a root for every lane at once.
+fn handle_did_change_workspace_folders(mut s Server, req Message) Reply {
+	params := as_object(req.params) or { return ok(null_value()) }
+	event_value := params['event'] or { return ok(null_value()) }
+	event := as_object(event_value) or { return ok(null_value()) }
+	if added := event['added'] {
+		for item in as_array(added) or { []json2.Any{} } {
+			folder := parse_workspace_folder(item) or { continue }
+			mut known := false
+			for existing in s.workspace_folders {
+				if existing.uri == folder.uri {
+					known = true
+				}
+			}
+			if !known {
+				s.workspace_folders << folder
+			}
+		}
+	}
+	if removed := event['removed'] {
+		mut removed_uris := []string{}
+		for item in as_array(removed) or { []json2.Any{} } {
+			folder := parse_workspace_folder(item) or { continue }
+			removed_uris << folder.uri
+		}
+		if removed_uris.len > 0 {
+			mut kept := []WorkspaceFolder{cap: s.workspace_folders.len}
+			for folder in s.workspace_folders {
+				if folder.uri !in removed_uris {
+					kept << folder
+				}
+			}
+			s.workspace_folders = kept
+		}
+	}
+	return ok(null_value())
+}
+
+// configuration is the last settings the client sent, either pushed or pulled.
+pub fn (s &Server) configuration() json2.Any {
+	return s.settings
+}
