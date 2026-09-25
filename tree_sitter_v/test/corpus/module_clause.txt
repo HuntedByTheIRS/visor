@@ -1,0 +1,61 @@
+================================================================================
+Simple module clause
+================================================================================
+module main
+--------------------------------------------------------------------------------
+
+(source_file
+  (module_clause
+    (identifier)))
+
+================================================================================
+Simple module clause with comment
+================================================================================
+// This is a comment
+// with two lines
+module main
+--------------------------------------------------------------------------------
+
+(source_file
+  (line_comment)
+  (line_comment)
+  (module_clause
+    (identifier)))
+
+================================================================================
+Module clause with attributes
+================================================================================
+[module_attribute]
+module main
+--------------------------------------------------------------------------------
+
+(source_file
+  (module_clause
+    (attributes
+      (attribute
+        (attribute_expression
+          (value_attribute
+            (reference_expression
+              (identifier))))))
+    (identifier)))
+
+================================================================================
+Module clause with attributes and comments
+================================================================================
+// This is a comment
+// with two lines
+[module_attribute]
+module main
+--------------------------------------------------------------------------------
+
+(source_file
+  (line_comment)
+  (line_comment)
+  (module_clause
+    (attributes
+      (attribute
+        (attribute_expression
+          (value_attribute
+            (reference_expression
+              (identifier))))))
+    (identifier)))
