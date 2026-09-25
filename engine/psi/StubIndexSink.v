@@ -25,7 +25,14 @@ fn (mut s StubIndexSink) occurrence(key StubIndexKey, value string) {
 		value
 	}
 
-	s.data[int(key)][resulting_value] << s.stub_id
+	// V 0.5.2 drops `s.data[int(key)][resulting_value] << s.stub_id` when the
+	// outer key is absent: the append lands in a temporary map and the sink
+	// keeps no occurrence at all, which leaves every index built from it empty.
+	// Reading the ids out and setting them back works whether or not the outer
+	// key is already there, where a nested append does not.
+	mut ids := s.data[int(key)][resulting_value] or { []StubId{} }
+	ids << s.stub_id
+	s.data[int(key)][resulting_value] = ids
 }
 
 @[inline]
