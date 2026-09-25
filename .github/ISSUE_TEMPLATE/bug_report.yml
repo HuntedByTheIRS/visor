@@ -1,0 +1,100 @@
+name: Bug report
+description: Something in visor does the wrong thing.
+title: "[bug]: "
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Reports get fixed when they can be reproduced, so the fields below matter
+        more than length.
+
+        This form is for bugs. Security problems go through
+        [SECURITY.md](https://github.com/HuntedByTheIRS/visor/blob/main/SECURITY.md)
+        instead, and the prose guide for everything else is
+        [ISSUES.md](https://github.com/HuntedByTheIRS/visor/blob/main/ISSUES.md).
+  - type: input
+    id: visor-version
+    attributes:
+      label: visor version
+      description: The output of `visor --version`.
+      placeholder: visor 0.0.1
+    validations:
+      required: true
+  - type: input
+    id: v-version
+    attributes:
+      label: V version
+      description: The output of `v version`. A version the server did not expect is worth reporting on its own.
+      placeholder: V 0.5.2 1b68924
+    validations:
+      required: true
+  - type: input
+    id: editor
+    attributes:
+      label: Editor and client
+      description: Which editor, and which client version.
+      placeholder: Neovim 0.11.2 with the visor config
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: Distribution and architecture. macOS and Windows builds do not exist yet, so say so if that is what you are on.
+      placeholder: CachyOS x86_64
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps, starting from opening the file.
+      placeholder: |
+        1. open example.v
+        2. put the cursor on foo
+        3. ask for a definition
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Server log
+      description: Paste what visor printed, or attach it. Leave this empty if the editor shows the failure and the log is clean.
+      render: text
+    validations:
+      required: false
+  - type: dropdown
+    id: manual-run
+    attributes:
+      label: Does it still happen when you start the server by hand?
+      description: Run visor with the V compiler on PATH, open the same file, and repeat the steps. This separates a server bug from editor wiring.
+      options:
+        - Yes, the same thing happens
+        - No, it only happens through the editor
+        - Have not tried
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the open and closed issues for this problem.
+          required: true
+        - label: This is not a security problem.
+          required: true
+        - label: I checked ROADMAP.md, and this is not something it lists as out of scope.
+          required: true

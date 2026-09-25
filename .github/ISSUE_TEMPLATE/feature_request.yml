@@ -1,0 +1,62 @@
+name: Feature request
+description: Something visor should do that it does not.
+title: "[feature]: "
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Say what you are trying to do. A request shaped around a workflow gets an
+        answer about design. One shaped around a missing button gets filed as a
+        preference.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you are trying to do
+      description: The workflow, not the feature. What are you editing, and where does the editor stop helping?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you want it to do
+      description: If you have an interface in mind, describe it. If you do not, that is fine.
+    validations:
+      required: false
+  - type: input
+    id: editors
+    attributes:
+      label: Which editors this matters for
+      description: Leave it out only if it applies everywhere.
+      placeholder: VS Code and Neovim
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do instead today
+      description: An existing workaround is useful context even when it is a bad one.
+    validations:
+      required: false
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Is this on the out-of-scope list?
+      description: ROADMAP.md defers these from v0.1.0. Pick the one this overlaps, if any.
+      options:
+        - Not on that list
+        - Inline completion (LSP 3.18)
+        - Debugger or DAP support
+        - macOS or Windows builds
+        - Marketplace or Open VSX publishing
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the open and closed issues for this.
+          required: true
+        - label: I read ROADMAP.md.
+          required: true
