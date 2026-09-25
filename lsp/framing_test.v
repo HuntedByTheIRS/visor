@@ -110,6 +110,18 @@ fn test_content_length_over_the_limit_is_refused() {
 	assert frames[0].reason.contains('limit')
 }
 
+fn test_garbage_between_frames_does_not_swallow_the_next_frame() {
+	// a bad Content-Length leaves the reader without a byte count, so whatever
+	// follows the block is unmeasured. The frame after it still has to arrive.
+	text := 'Content-Length: nope\r\n\r\n' + '{garbage' + format_frame('{"id":9}')
+	mut fr := reader_for(text, 0)
+	frames := fr.read_batch()
+	assert frames.len == 2
+	assert frames[0].kind == .malformed
+	assert frames[1].kind == .message
+	assert frames[1].body == '{"id":9}'
+}
+
 fn test_stream_ending_inside_a_frame_is_reported_once() {
 	mut fr := reader_for('Content-Length: 40\r\n\r\n{"id":1}', 0)
 	frames := fr.read_batch()

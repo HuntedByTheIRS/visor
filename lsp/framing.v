@@ -112,7 +112,7 @@ fn (mut fr FrameReader) take() ?Frame {
 		return none
 	}
 	length := content_length(fr.buf[..block.start]) or {
-		fr.drop(block.after)
+		fr.resync()
 		fr.malformed_frames++
 		return Frame{
 			kind:   .malformed
@@ -120,7 +120,7 @@ fn (mut fr FrameReader) take() ?Frame {
 		}
 	}
 	if length > max_frame_bytes {
-		fr.drop(block.after)
+		fr.resync()
 		fr.malformed_frames++
 		return Frame{
 			kind:   .malformed
@@ -146,6 +146,28 @@ fn (mut fr FrameReader) drop(n int) {
 		return
 	}
 	fr.buf = fr.buf[n..].clone()
+}
+
+// resync throws away bytes up to the next place a header could start. It runs
+// after a header block the reader could not use, where the byte count is unknown
+// and the buffer holds whatever followed the bad block: the body that was never
+// measured, or straight garbage. Looking for the next Content-Length is what
+// keeps one bad block from swallowing every frame behind it.
+//
+// The search starts at the second byte. The occurrence at offset zero is the
+// block that just failed, and matching it again would drop nothing and spin.
+fn (mut fr FrameReader) resync() {
+	if fr.buf.len < 2 {
+		fr.buf = []
+		return
+	}
+	lowered := fr.buf.bytestr().to_lower()
+	rest := lowered[1..]
+	at := rest.index('content-length') or {
+		fr.buf = []
+		return
+	}
+	fr.drop(1 + at)
 }
 
 // fill reads one chunk into the buffer. It reports false once the stream is
