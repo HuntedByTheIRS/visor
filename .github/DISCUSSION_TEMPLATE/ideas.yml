@@ -1,0 +1,39 @@
+title: "[Idea] "
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are for shaping. Once the shape is agreed and someone will work on
+        it, it becomes an issue, because issues are where work is tracked.
+
+        If what you want is on ROADMAP.md's out-of-scope list, the roadmap entry
+        is the answer and the thread will point back at it.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you are trying to do
+      description: The workflow, not the feature. What are you editing, and where does the editor stop helping?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you think it should do
+      description: Describe an interface if you have one in mind. If you do not, that is a valid starting point too.
+    validations:
+      required: false
+  - type: input
+    id: editors
+    attributes:
+      label: Which editors this matters for
+      placeholder: VS Code and Neovim
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do instead today
+      description: A workaround, however bad, tells us how much the gap costs you.
+    validations:
+      required: false

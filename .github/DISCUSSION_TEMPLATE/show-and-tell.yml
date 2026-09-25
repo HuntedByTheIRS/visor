@@ -1,0 +1,29 @@
+title: "[Show and tell] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For editor configurations, scripts and tools built around visor. A link is
+        welcome; a plug with no visor in it is not.
+  - type: textarea
+    id: what
+    attributes:
+      label: What it is
+      description: A paragraph is enough. What does it do, and who is it for?
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Where it lives
+      description: A repository, a gist, or a paste of the config itself.
+      placeholder: https://github.com/...
+    validations:
+      required: false
+  - type: textarea
+    id: how
+    attributes:
+      label: How it uses visor
+      description: Which parts of the server it leans on, and anything that had to be worked around.
+    validations:
+      required: false

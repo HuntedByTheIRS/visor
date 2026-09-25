@@ -1,0 +1,49 @@
+title: "[Q&A] "
+labels: ['question']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask the question in the title and the detail here. A question that carries
+        the error text and the versions usually gets answered without a round
+        trip.
+
+        Confirmed bugs belong in the issue tracker. Security problems go through
+        SECURITY.md and never into a discussion.
+  - type: textarea
+    id: question
+    attributes:
+      label: The question
+      description: What you are trying to do, and where you are stuck.
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What you have tried
+      description: Include the parts that did not work. They narrow the answer.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: The output of `v version`, and `visor --version` when visor runs at all.
+      placeholder: V 0.5.2 1b68924, visor 0.0.1
+    validations:
+      required: false
+  - type: textarea
+    id: editor
+    attributes:
+      label: Editor and its visor config
+      description: Which editor, and the visor lines from its configuration.
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: log
+    attributes:
+      label: Server log
+      render: text
+    validations:
+      required: false
