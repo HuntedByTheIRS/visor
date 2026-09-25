@@ -61,6 +61,43 @@ document: the plan's G5 calls for Gitea CI/CD, and AC10 and AC11 name Gitea for
 the release assets and the drift report. `L10` has not started, so nothing has
 been built on the old assumption yet.
 
+## Lane L2: vtool (2026-09-24)
+
+Copied from `vtool/VERIFICATION.md` by the integrator. The lane ran in
+`/home/specter/visor-lane-vtool` on branch `lane/vtool`, ending at `df00923`.
+
+| lane | date | command | observed |
+| --- | --- | --- | --- |
+| L2 | 2026-09-24 | `v test vtool/` | 7 test files, 56 test functions, all passing. Per file: discovery 8, exec 8, check 15, format 6, probe 6, outline 5, version 8. |
+| L2 | 2026-09-24 | `v -o /tmp/visor-l2 .` | exit 0, binary written. `/tmp/visor-l2 --version` prints `visor 0.0.1`. |
+| L2 | 2026-09-24 | `v fmt -verify .` | exit 0, no file reported as unformatted. |
+| L2 | 2026-09-24 | `v test .` | same 56 tests, passing. This is what CI runs. |
+| L2 | 2026-09-24 | `v test vtool/` ten times in a row | 10 passing summaries, 0 failures. The count matters because this suite had a one in four failure rate before the fix noted below. |
+| L2 | 2026-09-24 | a scratch program that imports `vtool`, calls `find()` then `probe()` | 289 ms for the five probe invocations, `v_version` answered `V 0.5.2 1b68924`. |
+
+The SIGPIPE fix behind the fourth row: when a child exits without reading its
+stdin, the next write raises SIGPIPE and the default action kills the writer.
+The lane's `exec_test.v` carries the regression, and `exec.v` masks the signal
+before writing.
+
+### Re-run after the merge (integration branch, 2026-09-25)
+
+Run by the integrator in a separate worktree rather than reused from the lane's
+report.
+
+| ID | Command | Observed result | Date |
+|---|---|---|---|
+| L2 | `git merge --no-ff lane/vtool` into `integration` | merged clean, 16 files added | 2026-09-25 |
+| L2 | `v -o /tmp/visor-int .` | exit 0 | 2026-09-25 |
+| L2 | `/tmp/visor-int --version` | prints `visor 0.0.1` | 2026-09-25 |
+| L2 | `v fmt -verify .` | exit 0 | 2026-09-25 |
+| L2 | `v test .` | 7 files, 56 tests, all passing, exit 0 | 2026-09-25 |
+| AC1 | compiler-internals grep after the merge | no match | 2026-09-25 |
+| AC4 | vls-mode grep after the merge | no match | 2026-09-25 |
+| L2 | file-length rule over the merged tree | no `.v` file over 4 kLOC, 1373 lines total | 2026-09-25 |
+| L2 | a buffer whose third line cannot parse, fed to `v -check -nocolor -` on stdin | exit 1, `.v3_stdin_…v:3:1: error: invalid expression: unexpected token` — the lane's central compiler claim reproduced by hand | 2026-09-25 |
+| L2 | `v ast -p vtool/discovery.v` | 230 `"offset"` keys and 0 `"line"` keys, which is the evidence behind the rule that no feature may depend on the outline path | 2026-09-25 |
+
 ## What the CI runner turned out to be
 
 Recorded because a job asking for a label no runner registered queues forever
