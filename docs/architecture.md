@@ -28,6 +28,15 @@ Modules import downward only. `vtool/` and `engine/` know nothing about the
 protocol, `features/` reads the engine and answers questions, and `lsp/` owns the
 wire. Nothing imports `main`.
 
+| Module | State | Owns | Imports from this tree |
+| --- | --- | --- | --- |
+| `vtool/` | in the tree | V binary discovery, the version and capability probe, `-check` over stdin, `fmt -` | nothing |
+| `engine/` | in the tree | tree-sitter V to PSI to index, ported from v-analyzer | its own submodules and the vendored bindings |
+| `lsp/` | in the tree | the wire: framing, capabilities, routing, sync, cancellation, progress, shutdown | `io`, `json2` and `os`, nothing else |
+| `diag/` | planned | debounce, one check in flight per module root, cancellation | `vtool/` |
+| `features/` | planned | the feature list in the README | `engine/` |
+| `main.v` | in the tree | the entry point and the stdio loop | `lsp/` |
+
 ## Hard rules
 
 These are the spine of the project. A change can be rejected for breaking any of

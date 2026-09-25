@@ -12,13 +12,14 @@ at the roadmap.
 
 ## What every report needs
 
-- the output of `visor --version`
-- the output of `v version`
-- the editor and client version: VS Code or VSCodium with the visor extension,
-  Neovim, coc.nvim, or Vim with vim-lsp
-- the smallest V file or project that shows the problem
-- what you expected, and what happened instead
-- the server log, when the failure is not visible in the editor
+| Field | Where it comes from |
+| --- | --- |
+| the visor version | `visor --version` |
+| the compiler version | `v version` |
+| the editor and its client | VS Code or VSCodium with the visor extension, Neovim, coc.nvim, or Vim with vim-lsp |
+| the smallest file or project that shows it | your own tree, trimmed until the problem is the only thing left |
+| expected against actual | what you thought would happen, and what did |
+| the server log | the client's language server output, when the failure is not visible in the editor |
 
 ## The form
 
