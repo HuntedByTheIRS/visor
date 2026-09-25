@@ -40,6 +40,10 @@ pub:
 	error_text string
 	// reason says why a message is invalid.
 	reason string
+	// invalid_code is the JSON-RPC error an invalid message is answered with. A
+	// body that did not parse is a parse error; a body that parsed but had
+	// nothing to route is an invalid request.
+	invalid_code int
 }
 
 // failed reports whether this message carries an error.
@@ -96,36 +100,41 @@ pub fn id_key(id json2.Any) string {
 pub fn parse_message(body string) Message {
 	if body == '' {
 		return Message{
-			kind:   .invalid
-			reason: 'empty frame body'
+			kind:         .invalid
+			reason:       'empty frame body'
+			invalid_code: code_parse_error
 		}
 	}
 	decoded := json2.decode[map[string]json2.Any](body) or {
 		return Message{
-			kind:   .invalid
-			reason: 'frame body is not a JSON object'
+			kind:         .invalid
+			reason:       'frame body is not a JSON object'
+			invalid_code: code_parse_error
 		}
 	}
 	version := decoded['jsonrpc'] or { null_value() }
 	if version !is string || (version as string) != jsonrpc_version {
 		return Message{
-			kind:   .invalid
-			reason: 'frame body does not declare jsonrpc ${jsonrpc_version}'
+			kind:         .invalid
+			reason:       'frame body does not declare jsonrpc ${jsonrpc_version}'
+			invalid_code: code_invalid_request
 		}
 	}
 	id := decoded['id'] or { null_value() }
 	if method := decoded['method'] {
 		if method !is string {
 			return Message{
-				kind:   .invalid
-				reason: 'method is not a string'
+				kind:         .invalid
+				reason:       'method is not a string'
+				invalid_code: code_invalid_request
 			}
 		}
 		name := method as string
 		if name == '' {
 			return Message{
-				kind:   .invalid
-				reason: 'method is empty'
+				kind:         .invalid
+				reason:       'method is empty'
+				invalid_code: code_invalid_request
 			}
 		}
 		params := decoded['params'] or { null_value() }
@@ -174,8 +183,9 @@ pub fn parse_message(body string) Message {
 		}
 	}
 	return Message{
-		kind:   .invalid
-		reason: 'frame body is neither a request, a notification nor a response'
+		kind:         .invalid
+		reason:       'frame body is neither a request, a notification nor a response'
+		invalid_code: code_invalid_request
 	}
 }
 
