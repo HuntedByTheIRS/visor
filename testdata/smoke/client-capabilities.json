@@ -1,0 +1,26 @@
+{
+  "general": {
+    "positionEncodings": [
+      "utf-8",
+      "utf-16"
+    ]
+  },
+  "textDocument": {
+    "diagnostic": {
+      "dynamicRegistration": false
+    },
+    "hover": {
+      "dynamicRegistration": false
+    },
+    "synchronization": {
+      "dynamicRegistration": false
+    }
+  },
+  "window": {
+    "workDoneProgress": true
+  },
+  "workspace": {
+    "configuration": true,
+    "workspaceFolders": true
+  }
+}

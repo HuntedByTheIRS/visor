@@ -1,0 +1,32 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": {
+    "capabilities": {
+      "diagnosticProvider": {
+        "identifier": "visor",
+        "interFileDependencies": false,
+        "workspaceDiagnostics": false
+      },
+      "positionEncoding": "utf-16",
+      "textDocumentSync": {
+        "change": 2,
+        "openClose": true,
+        "save": {
+          "includeText": false
+        }
+      },
+      "workDoneProgress": true,
+      "workspace": {
+        "workspaceFolders": {
+          "changeNotifications": true,
+          "supported": true
+        }
+      }
+    },
+    "serverInfo": {
+      "name": "visor",
+      "version": "0.0.1"
+    }
+  }
+}
