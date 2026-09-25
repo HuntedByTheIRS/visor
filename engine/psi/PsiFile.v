@@ -21,24 +21,26 @@ pub mut:
 }
 
 pub fn new_psi_file(path string, tree &bindings.Tree[bindings.NodeType], source_text string) &PsiFile {
+	// `root` is left out of the literal: V 0.5.2 refuses `unsafe { nil }` for an
+	// interface field, and the root can only be built once the file exists.
 	mut file := &PsiFile{
 		path:        path
 		tree:        unsafe { tree }
 		source_text: source_text
 		stub_list:   unsafe { nil }
-		root:        unsafe { nil }
 	}
 	file.root = create_element(AstNode(tree.root_node()), file)
 	return file
 }
 
 pub fn new_stub_psi_file(path string, stub_list &StubList) &PsiFile {
+	// Stub-based files have no root element of their own; `PsiFile.root()`
+	// falls back to the stub list.
 	return &PsiFile{
 		path:        path
 		tree:        unsafe { nil }
 		source_text: ''
 		stub_list:   stub_list
-		root:        unsafe { nil }
 	}
 }
 
