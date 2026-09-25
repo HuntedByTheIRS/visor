@@ -1,30 +1,29 @@
 # Corpus report: how much of vlib this grammar parses
 
-The engine lane owes a parse measurement (plan L3, gap G2). These are the
-numbers this grammar produces on a pinned corpus, taken on 2026-09-25.
+The engine owes a parse measurement. These are the numbers this grammar produces
+on a pinned corpus, taken on 2026-09-25.
 
 Environment: V 0.5.2, commit `1b68924`, the compiler `v` resolves to on PATH
 (`/home/specter/v/v`), so the corpus is the vlib shipped with that commit,
 `/home/specter/v/vlib`. The harness finds the vlib directory of whatever `v`
 is on PATH, which is why the pinned list is relative to it.
 
-| ID | Command | Observed result | Date |
-|---|---|---|---|
-| L3 | `v -o /tmp/visor-corpus engine/corpus_test.v && /tmp/visor-corpus` | 30 files, 31,406 lines, 379,504 nodes, 34 `ERROR` nodes, 11 `MISSING` nodes, exit 0 | 2026-09-25 |
-| L3 | `v test engine/` | 4 test files, 10 test functions, `4 passed, 4 total`, exit 0 | 2026-09-25 |
+| Command | Observed result | Date |
+|---|---|---|
+| `v -o /tmp/visor-corpus engine/corpus_test.v && /tmp/visor-corpus` | 30 files, 31,406 lines, 379,504 nodes, 34 `ERROR` nodes, 11 `MISSING` nodes, exit 0 | 2026-09-25 |
+| `v test engine/` | 4 test files, 10 test functions, `4 passed, 4 total`, exit 0 | 2026-09-25 |
 
 ## Threshold against measurement
 
 The plan asks for a corpus that "parses with zero ERROR nodes above a stated
-threshold", and leaves the number to the lane. The threshold stated here is
-zero `ERROR` nodes and zero `MISSING` nodes over the pinned list.
+threshold", and leaves the number to the implementation. The threshold stated
+here is zero `ERROR` nodes and zero `MISSING` nodes over the pinned list.
 
-Measured: **34 `ERROR` nodes and 11 `MISSING` nodes**. The threshold is not
-met, so AC15 is not satisfied and G2 stays open. The grammar work decision 9
-approves is what closes it. `engine/corpus_test.v` asserts the measured
-baseline (34 and 11) rather than the target, so the corpus cannot get worse
-without failing, and a change that parses more has to lower the constants and
-update this table.
+Measured: **34 `ERROR` nodes and 11 `MISSING` nodes**, so the threshold is not
+met. Grammar work on the constructs below is what closes the gap.
+`engine/corpus_test.v` asserts the measured baseline (34 and 11) rather than the
+target, so the corpus cannot get worse without failing, and a change that parses
+more has to lower the constants and update this table.
 
 ## The pinned list
 
@@ -133,7 +132,7 @@ The counters are exercised first on damaged buffers in the same test file, since
 a corpus of clean files proves nothing if the counter never fires:
 `@#$%^&*` produces 2 `ERROR` nodes, `if x { }\n}\n` produces 1, and
 `fn main() {\n\tx := \n}\n` produces a `MISSING` node rather than an `ERROR`
-one. That last buffer is what the vtool lane feeds the compiler to get an error
+one. That last buffer is what the vtool module feeds the compiler to get an error
 diagnostic, and this grammar recovers from it without an `ERROR` node, so an
 `ERROR` count alone is not the same thing as "this file is damaged".
 
