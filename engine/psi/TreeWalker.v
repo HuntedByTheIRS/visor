@@ -66,5 +66,5 @@ pub fn (tw &TreeWalker) current_node() ?AstNode {
 
 @[inline]
 pub fn (mut tw TreeWalker) free() {
-	unsafe { tw.cursor.raw_cursor.delete() }
+	unsafe { C.ts_tree_cursor_delete(&tw.cursor.raw_cursor) }
 }
