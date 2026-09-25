@@ -1,20 +1,21 @@
 # Roadmap
 
+The server is pre-release: `--version` answers `visor 0.0.1`, and this file is
+what comes next.
+
+| Release | State | Carries |
+| --- | --- | --- |
+| 0.0.1 | in the tree | the protocol core: `initialize`, `shutdown`, `exit`, text sync, cancellation, progress |
+| v0.1.0 | in progress | every feature in the README table, on Linux |
+| 0.1.x | planned | visor's own JSON layer, which lowers the compiler floor |
+| v0.2.0 | planned | inline completion, LSP 3.18 |
+
 ## v0.1.0
 
 Everything in the feature list ships in v0.1.0. Splitting the feature set across
 releases would ship a server nobody can use yet, and deriving the engine from
-v-analyzer is what makes the full set reachable in one release.
-
-- diagnostics over unsaved buffers, pushed and pulled
-- hover, completion, signature help
-- definition, declaration, type definition, implementation, references
-- rename and prepare rename
-- document symbols, workspace symbols
-- folding ranges, document highlight, selection range, range formatting
-- semantic tokens, inlay hints
-- code actions, code lens, call hierarchy
-- formatting, which delegates to `v fmt`
+v-analyzer is what makes the full set reachable in one release. The list itself
+is the table in `README.md`.
 
 Acceptance for the release is the criteria in the plan, each one shown by a
 command and the result it printed.
@@ -23,12 +24,25 @@ command and the result it printed.
 
 The tree needs V master rather than the latest release. `lsp/` imports `json2`,
 and `vlib/json2` arrived eight commits after the 0.5.2 tag (`ee3ef57ffd`,
-2026-07-13), so no published release asset carries it. The older `vlib/json` is
-not the way out: it is deprecated in favour of `json2`, and master's `v fmt`
-rewrites one into the other, so adopting it would mean building on a module V is
-deleting. CI therefore builds V master from source, which stays affordable
-because V's Makefile bootstraps through the portable snapshot in `vc/v.c` rather
-than through V3.
+2026-07-13), so no published release asset carries it.
+
+```text
+  0.5.2 tag
+      |
+      |  8 commits, 2026-07-13
+      v
+  vlib/json2 lands at ee3ef57ffd
+      |
+      |  no published V release carries it
+      v
+  CI builds V master from source
+```
+
+The older `vlib/json` is not the way out: it is deprecated in favour of `json2`,
+and master's `v fmt` rewrites one into the other, so adopting it would mean
+building on a module V is deleting. CI therefore builds V master from source,
+which stays affordable because V's Makefile bootstraps through the portable
+snapshot in `vc/v.c` rather than through V3.
 
 The 0.1.x series ends this arrangement by giving visor its own JSON layer. Once
 the server no longer depends on a V module that is missing from the latest
