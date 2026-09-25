@@ -12,6 +12,9 @@
   <a href="https://github.com/HuntedByTheIRS/visor/actions/workflows/ci.yml"><img src="https://github.com/HuntedByTheIRS/visor/actions/workflows/ci.yml/badge.svg" alt="ci"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT"></a>
   <img src="https://img.shields.io/badge/status-pre--release-orange.svg" alt="pre-release">
+  <img src="https://img.shields.io/badge/LSP-3.17-blueviolet.svg" alt="LSP 3.17">
+  <img src="https://img.shields.io/badge/compiler-V%20master%20(0.5.x)-grey.svg" alt="V master">
+  <img src="https://img.shields.io/badge/platform-linux%20amd64%20%7C%20arm64-lightgrey.svg" alt="linux amd64 and arm64">
 </p>
 
 ## What it does
@@ -32,6 +35,26 @@ process prints, which is why the server keeps working across compiler releases
 that reshuffle everything underneath the language: V removed its V1 AST in
 September 2026, and every feature that used to ride the V1 compatibility
 compiler runs in-process here instead.
+
+```
+  editor
+  VS Code, VSCodium, Neovim, Vim
+        |
+        |  JSON-RPC over stdio
+        v
+  +---------------------------+
+  |           visor           |
+  |    lsp/        features/  |
+  |    engine/     diag/      |
+  |    vtool/                 |
+  +---------------------------+
+        |
+        |  runs `v`, reads what it prints
+        v
+  +---------------------------+
+  |        v compiler         |
+  +---------------------------+
+```
 
 The cost of that boundary is one process per check. The gain is a server that
 does not break when the compiler is refactored, and the trade is deliberate.
@@ -57,15 +80,17 @@ today.
 
 ## Features, targeted for v0.1.0
 
-- diagnostics, pushed and pulled, including over unsaved buffers
-- hover, completion, signature help
-- definition, declaration, type definition, implementation, references
-- rename and prepare rename
-- document symbols and workspace symbols
-- folding ranges, document highlight, selection range, range formatting
-- semantic tokens, inlay hints
-- code actions, code lens, call hierarchy
-- formatting, which is `v fmt` verbatim
+| Area | What ships |
+|---|---|
+| Diagnostics | pushed and pulled, including over unsaved buffers |
+| Hover and completion | hover, completion, signature help |
+| Navigation | definition, declaration, type definition, implementation, references |
+| Rename | rename and prepare rename |
+| Symbols | document symbols and workspace symbols |
+| Selection and view | folding ranges, document highlight, selection range, range formatting |
+| Semantic tokens | semantic tokens, inlay hints |
+| Code actions | code actions, code lens, call hierarchy |
+| Formatting | `v fmt` verbatim |
 
 An inline completion provider (LSP 3.18) and anything debugger shaped are out of
 scope for v0.1.0. `ROADMAP.md` carries the detail and the release cadence.
@@ -76,19 +101,28 @@ Linux on amd64 or arm64, with a V compiler on `PATH`. The server probes
 `v version` at startup and tells you when a flag it depends on is missing,
 rather than quietly returning an empty result.
 
-The protocol layer imports `json2`, which V added after the 0.5.2 release, so the
-tree needs a current V master: a 0.5.2 release asset cannot build it, and CI
-builds V master from source for that reason. `vlib/json` is not an alternative,
-being deprecated in favour of `json2` ("`json` will be removed soon; use the pure
-V `json2` module instead"). The 0.1.x series gives visor its own JSON layer and
-lowers this floor again; `ROADMAP.md` carries the reasoning.
+> The protocol layer imports `json2`, which V added after the 0.5.2 release, so
+> the tree needs a current V master. A 0.5.2 release asset cannot build it, and
+> CI builds V master from source for that reason. `vlib/json` is not the way
+> out: it is deprecated in favour of `json2` in V's own words, "`json` will be
+> removed soon; use the pure V `json2` module instead". The 0.1.x series gives
+> visor its own JSON layer and lowers this floor again, and `ROADMAP.md` carries
+> the reasoning.
 
-Compiler discovery order: `VISOR_V_COMMAND`, then `VEXE`, then `v` on `PATH`.
+Compiler discovery order, first match wins:
+
+| Order | Source |
+|---|---|
+| 1 | `VISOR_V_COMMAND` |
+| 2 | `VEXE` |
+| 3 | `v` on `PATH` |
 
 ## Build
 
-    v -o visor .
-    ./visor --version
+```sh
+v -o visor .
+./visor --version
+```
 
 ## Editors
 
@@ -97,14 +131,21 @@ v0.1.0. Both will find the server themselves.
 
 ## Contributing
 
-`CONTRIBUTING.md` has the build, the test and the review rules. Bugs and feature
-requests go through the issue tracker, whose format lives in `ISSUES.md`;
-questions go to the discussions, governed by `DISCUSSIONS.md`; security reports
-go through `SECURITY.md`; `CODE_OF_CONDUCT.md` covers how people treat each
-other in all three places.
+Bugs and feature requests go through the issue tracker, whose format lives in
+`ISSUES.md`; questions go to the discussions, governed by `DISCUSSIONS.md`;
+security reports go through `SECURITY.md`; `CODE_OF_CONDUCT.md` covers how
+people treat each other in all three places.
 
-The internals are in `docs/architecture.md`. `AGENTS.md` carries the rules for
-automated contributors.
+| Document | What it covers |
+|---|---|
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | the build, the test and the review rules |
+| [`docs/architecture.md`](docs/architecture.md) | the modules, the hard rules, diagnostics scheduling |
+| [`ROADMAP.md`](ROADMAP.md) | what ships when, and the compiler floor |
+| [`ISSUES.md`](ISSUES.md) | what a bug report has to carry |
+| [`DISCUSSIONS.md`](DISCUSSIONS.md) | the categories and the house rules |
+| [`SECURITY.md`](SECURITY.md) | the private reporting route |
+| [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | how people treat each other in every space above |
+| [`AGENTS.md`](AGENTS.md) | the rules for automated contributors |
 
 ## License
 
