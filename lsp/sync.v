@@ -67,6 +67,11 @@ fn handle_did_change_configuration(mut s Server, req Message) Reply {
 	if settings := params['settings'] {
 		s.settings = settings
 	}
+	// A client that can answer workspace/configuration may send an empty push
+	// and expect the server to ask for what it needs, so ask.
+	if s.client_announced().client_pulls_configuration() {
+		s.pull_configuration()
+	}
 	return ok(null_value())
 }
 
@@ -112,4 +117,24 @@ fn handle_did_change_workspace_folders(mut s Server, req Message) Reply {
 // configuration is the last settings the client sent, either pushed or pulled.
 pub fn (s &Server) configuration() json2.Any {
 	return s.settings
+}
+
+// pull_configuration asks the client for the settings this server reads. The
+// answer replaces whatever a push carried, because it is the newer one.
+fn (mut s Server) pull_configuration() {
+	mut item := map[string]json2.Any{}
+	item['section'] = json2.Any(server_name)
+	mut params := map[string]json2.Any{}
+	params['items'] = json2.Any([json2.Any(item)])
+	s.ask('workspace/configuration', json2.Any(params), .configuration, '')
+}
+
+// first_configuration unwraps the array workspace/configuration answers with.
+// The request carries one section, so the reply has one entry.
+fn first_configuration(value json2.Any) json2.Any {
+	items := as_array(value) or { return value }
+	if items.len == 0 {
+		return value
+	}
+	return items[0]
 }

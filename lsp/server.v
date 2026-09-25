@@ -20,6 +20,20 @@ pub enum ServerState {
 	shutting_down
 }
 
+// PendingKind says what the server should do with a reply from the client.
+pub enum PendingKind {
+	// the reply to window/workDoneProgress/create. The token is the key.
+	progress_create
+	// the reply to workspace/configuration. The result replaces the settings.
+	configuration
+}
+
+pub struct PendingRequest {
+pub:
+	kind PendingKind
+	key  string
+}
+
 // BufferSink collects messages instead of writing them. A test hands one to
 // new_server and reads what the server said; without it every test file would
 // carry its own copy of these twelve lines.
@@ -64,16 +78,28 @@ mut:
 	initialization_options json2.Any
 	settings               json2.Any
 	documents              DocumentStore
+	cancel                 CancelRegistry
+	progress               ProgressReporter
+	// pending maps the ids of requests the server sent to the client onto what
+	// the reply means.
+	pending          map[string]PendingRequest
+	next_outbound_id int
 pub mut:
 	// The counters exist so a test can assert that a message was dropped rather
 	// than answered, which is otherwise invisible from the outside.
 	requests_answered     int
 	notifications_handled int
 	refused_frames        int
+	// cancelled_requests counts requests dropped because the client cancelled
+	// their id before they were dispatched.
+	cancelled_requests int
 	// sync_refusals counts didChange notifications for a buffer the store does
 	// not have, which means the two sides disagree about what is open.
-	sync_refusals     int
-	workspace_folders []WorkspaceFolder
+	sync_refusals int
+	// unsolicited_responses counts replies that matched no request the server
+	// sent.
+	unsolicited_responses int
+	workspace_folders     []WorkspaceFolder
 }
 
 pub fn new_server(sink Sender) &Server {
@@ -144,19 +170,53 @@ pub fn (s &Server) open_documents() []string {
 	return s.documents.uris()
 }
 
+// cancelled_count is how many requests the client cancelled before they ran.
+pub fn (s &Server) cancelled_count() int {
+	return s.cancelled_requests
+}
+
+// outstanding_requests is how many requests the server is still waiting on an
+// answer to.
+pub fn (s &Server) outstanding_requests() int {
+	return s.pending.len
+}
+
 // serve_batch works through one read batch. Frames arrive as a batch rather
 // than one at a time so that a $/cancelRequest written together with its
 // request is seen before the request is dispatched.
 pub fn (mut s Server) serve_batch(frames []Frame) {
+	mut messages := []Message{cap: frames.len}
 	for frame in frames {
 		if frame.kind == .malformed {
-			// Nothing in a frame the reader refused can be matched to a request
+			// nothing in a frame the reader refused can be matched to a request
 			// id, so there is no one to tell. The count is the record.
 			s.refused_frames++
 			continue
 		}
-		s.serve_message(parse_message(frame.body))
+		messages << parse_message(frame.body)
 	}
+	// Cancellation is applied to the whole batch before any handler runs, which
+	// is what makes a $/cancelRequest written together with its request take
+	// effect: the two frames arrive in one batch and the mark is set before the
+	// request is dispatched. It also means a cancel that arrives alone is
+	// recorded and then waits for a request that will never come, which is why
+	// the registry is capped.
+	for m in messages {
+		if m.kind == .notification && m.method == cancel_method {
+			s.note_cancel(m)
+		}
+	}
+	for m in messages {
+		s.serve_message(m)
+	}
+}
+
+// note_cancel records a cancellation. There is no handler registered for
+// $/cancelRequest: this pre-pass is the handler, and it works on the batch
+// rather than on one message at a time.
+fn (mut s Server) note_cancel(m Message) {
+	params := as_object(m.params) or { return }
+	s.cancel.mark(params['id'] or { null_value() })
 }
 
 pub fn (mut s Server) serve_message(m Message) {
@@ -187,6 +247,13 @@ fn (mut s Server) serve_invalid(m Message) {
 }
 
 fn (mut s Server) serve_request(m Message) {
+	if s.cancel.take(m.id) {
+		// The client cancelled this id. Answering anyway would leave it with a
+		// reply it has already thrown away, and the mark is consumed so the id
+		// starts clean if it is ever used again.
+		s.cancelled_requests++
+		return
+	}
 	reply := s.dispatch(m)
 	if reply.failed() {
 		s.write(encode_error(m.id, reply.err_code, reply.err_text))
@@ -218,10 +285,47 @@ fn (mut s Server) serve_notification(m Message) {
 }
 
 // serve_response takes a reply to a request the server sent. Progress creation
-// and configuration pulls are the two places the server asks the client
-// anything; both are wired up with the progress reporter.
+// and the configuration pull are the two reasons the server asks the client
+// anything, and both are matched here by the id the server chose.
 fn (mut s Server) serve_response(m Message) {
-	_ = m
+	key := m.id_key()
+	if key == '' {
+		// a response with a null id matches no request the server sent.
+		s.unsolicited_responses++
+		return
+	}
+	request := s.pending[key] or {
+		s.unsolicited_responses++
+		return
+	}
+	s.pending.delete(key)
+	if m.failed() {
+		match request.kind {
+			.progress_create { s.progress_declined(request.key) }
+			.configuration {
+				// the client refused to answer, so the pushed settings stand.
+			}
+		}
+		return
+	}
+	match request.kind {
+		.progress_create { s.progress_created(request.key) }
+		.configuration { s.settings = first_configuration(m.result) }
+	}
+}
+
+// ask sends a request to the client and records what its reply means. The
+// direction has its own id space, so a server id never collides with a client
+// id even when both are small integers.
+fn (mut s Server) ask(method string, params json2.Any, kind PendingKind, key string) int {
+	s.next_outbound_id++
+	id := s.next_outbound_id
+	s.pending[id_key(json2.Any(id))] = PendingRequest{
+		kind: kind
+		key:  key
+	}
+	s.write(encode_request(id, method, params))
+	return id
 }
 
 // write puts one encoded message on the wire.
