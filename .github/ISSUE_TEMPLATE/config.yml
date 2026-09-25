@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Question about using visor
+    url: https://github.com/HuntedByTheIRS/visor/discussions/categories/q-a
+    about: Setup, editor wiring, and errors you cannot explain. Confirmed bugs still go in the tracker.
   - name: Security problem
     url: https://github.com/HuntedByTheIRS/visor/security/advisories/new
     about: Report a vulnerability privately instead of opening an issue.

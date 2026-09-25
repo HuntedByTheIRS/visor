@@ -34,6 +34,11 @@ Say what you are trying to do, not only what you want added. A request shaped
 around a workflow gets an answer about design. One shaped around a missing
 button gets filed as a preference.
 
+## Questions
+
+Questions go to the discussions, in the Q&A category, so the answer stays where
+the next person can search for it. `DISCUSSIONS.md` has the rules for that space.
+
 ## Security problems
 
 Those do not go here. `SECURITY.md` has the reporting route, and it is private.

@@ -63,8 +63,9 @@ Comments explain why the code is the way it is. They never narrate the code.
 
 Bugs and feature requests go through the GitHub issue tracker; `ISSUES.md` has
 the format the reports are read in. Security problems go to `SECURITY.md`
-instead, which routes them somewhere private. `CODE_OF_CONDUCT.md` covers how
-people treat each other in the tracker and in review.
+instead, which routes them somewhere private. Questions and unshaped ideas go to
+the discussions, where `DISCUSSIONS.md` sets the rules. `CODE_OF_CONDUCT.md`
+covers how people treat each other in all of those places.
 
 ## Before you open a pull request
 
