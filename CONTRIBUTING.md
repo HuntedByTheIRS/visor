@@ -59,6 +59,13 @@ this project's prose would pick up on its own:
 
 Comments explain why the code is the way it is. They never narrate the code.
 
+## Filing issues and reporting problems
+
+Bugs and feature requests go through the GitHub issue tracker; `ISSUES.md` has
+the format the reports are read in. Security problems go to `SECURITY.md`
+instead, which routes them somewhere private. `CODE_OF_CONDUCT.md` covers how
+people treat each other in the tracker and in review.
+
 ## Before you open a pull request
 
 Run the four checks above, add a dated row to `docs/verification.md` for what
