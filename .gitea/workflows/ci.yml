@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      V_TAG: '0.5.2'
+    steps:
+      - name: Install the build tools
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y -qq git curl make gcc >/dev/null
+
+      - name: Checkout visor
+        uses: https://github.com/actions/checkout@v4
+
+      - name: Build the V compiler
+        run: |
+          git clone --depth 1 --branch "$V_TAG" https://github.com/vlang/v /opt/v
+          make -C /opt/v -j"$(nproc)"
+          /opt/v/v version
+          echo /opt/v >> "$GITHUB_PATH"
+
+      - name: Build visor
+        run: v -o /tmp/visor .
+
+      - name: Version probe
+        run: /tmp/visor --version
+
+      - name: Format gate
+        run: v fmt -verify .
+
+      - name: Tests
+        run: v test .
+
+      - name: Ban compiler internals and the V1 compatibility protocol
+        run: |
+          if grep -rnE 'import v\.(ast|flat|parser|checker|pref|scanner)' --include='*.v' .; then
+            echo "a compiler-internal import slipped in"
+            exit 1
+          fi
+          if grep -rn 'vls-mode\|-line-info' --include='*.v' .; then
+            echo "the V1 compatibility protocol is referenced"
+            exit 1
+          fi
