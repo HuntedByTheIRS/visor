@@ -1,0 +1,22 @@
+{
+  // markdownlint-cli2 runs bare, in CI and on a laptop, so the globs live here.
+  "globs": ["**/*.md"],
+  "ignores": [
+    // Vendored from upstream whole, byte for byte.
+    "tree_sitter_v/**",
+    // Local scratch, not part of the tree.
+    ".omh/**",
+    "node_modules/**",
+  ],
+  "config": {
+    "default": true,
+    // Prose is wrapped by hand at 78 columns and reviewed for it, but tables,
+    // badge markup and measured command output run long on purpose.
+    "MD013": false,
+    // The front page opens with centred HTML, and the pull request template
+    // starts at h2 because GitHub draws the section header above it.
+    "MD041": false,
+    // Same reason: the front page is built from these four elements.
+    "MD033": { "allowed_elements": ["a", "h1", "img", "p"] }
+  }
+}

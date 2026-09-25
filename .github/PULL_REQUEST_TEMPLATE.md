@@ -7,6 +7,7 @@
 - [ ] `v -o /tmp/visor .` exits 0
 - [ ] `v fmt -verify .` exits 0
 - [ ] `v test .` is green
+- [ ] `npx --yes markdownlint-cli2@0.23.3` is green
 - [ ] the compiler-internal import and V1 protocol grep gates pass
 - [ ] every command reported here was run from a clean checkout
 

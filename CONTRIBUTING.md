@@ -2,9 +2,12 @@
 
 ## Build and check
 
-    v -o /tmp/visor .
-    v fmt -verify .
-    v test .
+```sh
+v -o /tmp/visor .
+v fmt -verify .
+v test .
+npx --yes markdownlint-cli2@0.23.3   # markdown gate, config in .markdownlint-cli2.jsonc
+```
 
 `v fmt` is the only formatter here. Do not add a second one, and do not reformat
 code by hand into a shape `v fmt` would undo.

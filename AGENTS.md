@@ -6,13 +6,20 @@ wrong called out.
 
 ## Commands
 
-    v -o /tmp/visor .        # build
-    v fmt -verify .          # format gate, exit 0 or fail
-    v test .                 # every lane's tests, recurses into module dirs
-    v test vtool/            # one module
+```sh
+v -o /tmp/visor .        # build
+v fmt -verify .          # format gate, exit 0 or fail
+v test .                 # every module's tests, recurses into module dirs
+v test vtool/            # one module
+npx --yes markdownlint-cli2@0.23.3   # markdown gate
+```
 
 `v test .` picks up `_test.v` files in subdirectory modules, so it is the whole
 suite. There is no `v test ./...` in V 0.5.2; do not invent one.
+
+The markdown gate reads `.markdownlint-cli2.jsonc`, which holds the globs, the
+rules this tree switches off and the reason for each one. CI runs the same
+command on the same pinned version.
 
 ## Where things live
 

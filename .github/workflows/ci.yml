@@ -16,6 +16,22 @@ env:
   V_REPO: 'https://github.com/vlang/v'
 
 jobs:
+  markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout visor
+        uses: actions/checkout@v4
+
+      - name: Install the markdown linter
+        run: |
+          # Pinned, like the compiler: a linter that gains rules on its own
+          # turns a green tree red without a commit behind it.
+          npm install -g markdownlint-cli2@0.23.3
+          markdownlint-cli2 --version
+
+      - name: Lint the markdown
+        run: markdownlint-cli2
+
   build-and-test:
     runs-on: ubuntu-latest
     steps:
