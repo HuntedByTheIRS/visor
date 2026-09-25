@@ -16,6 +16,16 @@ pub fn convert_type(plain_type ?PsiElement) types.Type {
 
 pub struct TypeInferer {}
 
+// infer_wrapped_expression unwraps the value an or-block, a `?` or a `!`
+// expression yields. The three element types each spell their own expression()
+// accessor, so the branch that names them calls this with the lookup result
+// instead of a common interface.
+fn (t &TypeInferer) infer_wrapped_expression(expression ?PsiElement) types.Type {
+	expr := expression or { return types.unknown_type }
+	expr_type := t.infer_type(expr)
+	return types.unwrap_result_or_option_type(expr_type)
+}
+
 pub fn (t &TypeInferer) infer_type(elem ?PsiElement) types.Type {
 	element := elem or { return types.unknown_type }
 
@@ -64,10 +74,14 @@ pub fn (t &TypeInferer) infer_type_impl(elem ?PsiElement) types.Type {
 		UnaryExpression {
 			return t.infer_unary_expression_type(element)
 		}
-		OrBlockExpression, ResultPropagationExpression, OptionPropagationExpression {
-			expr := element.expression() or { return types.unknown_type }
-			expr_type := t.infer_type(expr)
-			return types.unwrap_result_or_option_type(expr_type)
+		OrBlockExpression {
+			return t.infer_wrapped_expression(element.expression())
+		}
+		ResultPropagationExpression {
+			return t.infer_wrapped_expression(element.expression())
+		}
+		OptionPropagationExpression {
+			return t.infer_wrapped_expression(element.expression())
 		}
 		IndexExpression {
 			return t.infer_index_expression_type(element)
@@ -134,7 +148,13 @@ pub fn (t &TypeInferer) infer_type_impl(elem ?PsiElement) types.Type {
 			signature := element.signature() or { return types.unknown_type }
 			return t.process_signature(signature)
 		}
-		EnumDeclaration, EnumFieldDeclaration, ConstantDefinition {
+		EnumDeclaration {
+			return element.get_type()
+		}
+		EnumFieldDeclaration {
+			return element.get_type()
+		}
+		ConstantDefinition {
 			return element.get_type()
 		}
 		TypeReferenceExpression {
