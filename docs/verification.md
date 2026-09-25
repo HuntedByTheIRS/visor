@@ -35,6 +35,32 @@ CI runs the 0.5.2 release asset (`7647ce1`). The local rows above are on the
 master checkout `1b68924`, which is 1700 commits past the tag. Both report
 0.5.2 and they are not the same compiler commit.
 
+## The remote move (2026-09-25)
+
+The canonical remote became `https://github.com/HuntedByTheIRS/visor`. The old
+Gitea remote is kept as `spectoria` and still receives pushes.
+
+The pipeline had only ever existed under `.gitea/workflows/`, so the new remote
+started with no gate at all. It now lives at `.github/workflows/ci.yml`, which
+GitHub Actions reads natively and the Gitea instance falls back to when
+`.gitea/workflows/` is absent. Two edits make it host neutral: `sudo` only when
+the job is not already root, and `actions/checkout` by name instead of by full
+URL.
+
+| ID | Host | Command | Observed result | Date |
+|---|---|---|---|---|
+| L1 | GitHub Actions | push `9bc4da1` to `main`, run 36087375425 | `build-and-test` concluded success, all eight steps green | 2026-09-25 |
+| L1 | Gitea Actions | push `9bc4da1` to `main`, run 33 | `build-and-test` concluded success, all eight steps green | 2026-09-25 |
+
+The Gitea run also answers the open question: this instance does resolve
+`actions/checkout@v4` against its default actions URL. The full-URL form is no
+longer needed.
+
+Two plan statements are now out of date and belong to the person, not to this
+document: the plan's G5 calls for Gitea CI/CD, and AC10 and AC11 name Gitea for
+the release assets and the drift report. `L10` has not started, so nothing has
+been built on the old assumption yet.
+
 ## What the CI runner turned out to be
 
 Recorded because a job asking for a label no runner registered queues forever
