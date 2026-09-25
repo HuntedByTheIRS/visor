@@ -7,18 +7,22 @@ pub struct VarDeclaration {
 	PsiElementImpl
 }
 
+// The filter and map that upstream chained here lose the element type: the
+// mapped array no longer answers is_equal. The loop builds the same list and
+// keeps the type.
 fn (v VarDeclaration) index_of(def VarDefinition) int {
 	first_child := v.first_child() or { return -1 }
-	children := first_child.children()
-		.filter(it is VarDefinition || it is MutExpression)
-		.map(fn (it PsiElement) PsiElement {
-			if it is MutExpression {
-				return it.last_child() or { return it }
-			}
-			return it
-		})
+	mut definitions := []PsiElement{}
+	for child in first_child.children() {
+		if child is VarDefinition {
+			definitions << child
+		} else if child is MutExpression {
+			last := child.last_child() or { PsiElement(child) }
+			definitions << last
+		}
+	}
 
-	for i, definition in children {
+	for i, definition in definitions {
 		if definition.is_equal(def) {
 			return i
 		}
