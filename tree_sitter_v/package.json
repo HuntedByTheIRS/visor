@@ -1,0 +1,18 @@
+{
+  "name": "tree-sitter-v",
+  "version": "0.0.6",
+  "private": true,
+  "description": "V grammar for tree-sitter",
+  "main": "bindings/node",
+  "license": "MIT",
+  "scripts": {
+    "test": "tree-sitter test",
+    "generate": "tree-sitter generate && v bindings/generate_types.vsh",
+    "parse": "tree-sitter parse",
+    "format": "prettier --write grammar.js"
+  },
+  "devDependencies": {
+    "prettier": "^3.7.4",
+    "tree-sitter-cli": "0.26.3"
+  }
+}

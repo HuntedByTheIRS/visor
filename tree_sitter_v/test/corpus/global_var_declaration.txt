@@ -1,0 +1,184 @@
+================================================================================
+Simple global variable
+================================================================================
+__global g_var = 0
+--------------------------------------------------------------------------------
+
+(source_file
+  (global_var_declaration
+    (global_var_definition
+      (identifier)
+      (literal
+        (int_literal)))))
+
+================================================================================
+Simple global variable with type
+================================================================================
+__global g_var int
+--------------------------------------------------------------------------------
+
+(source_file
+  (global_var_declaration
+    (global_var_definition
+      (identifier)
+      (plain_type
+        (type_reference_expression
+          (identifier))))))
+
+================================================================================
+Simple global variable with complex type
+================================================================================
+__global g_var map[string]int
+--------------------------------------------------------------------------------
+
+(source_file
+  (global_var_declaration
+    (global_var_definition
+      (identifier)
+      (plain_type
+        (map_type
+          (plain_type
+            (type_reference_expression
+              (identifier)))
+          (plain_type
+            (type_reference_expression
+              (identifier))))))))
+
+================================================================================
+Multiline global variable
+================================================================================
+__global (
+    g_var = 100
+)
+--------------------------------------------------------------------------------
+
+(source_file
+  (global_var_declaration
+    (global_var_definition
+      (identifier)
+      (literal
+        (int_literal)))))
+
+================================================================================
+Multiline global variables
+================================================================================
+__global (
+    g_var = 100
+    g_var2 = 200
+    g_var3 = 300
+)
+--------------------------------------------------------------------------------
+
+(source_file
+  (global_var_declaration
+    (global_var_definition
+      (identifier)
+      (literal
+        (int_literal)))
+    (global_var_definition
+      (identifier)
+      (literal
+        (int_literal)))
+    (global_var_definition
+      (identifier)
+      (literal
+        (int_literal)))))
+
+================================================================================
+Multiline global variables with type and initializer
+================================================================================
+__global (
+    g_var = 100
+    g_var2 int
+    g_var3 string
+    g_var4 = true
+)
+--------------------------------------------------------------------------------
+
+(source_file
+  (global_var_declaration
+    (global_var_definition
+      (identifier)
+      (literal
+        (int_literal)))
+    (global_var_definition
+      (identifier)
+      (plain_type
+        (type_reference_expression
+          (identifier))))
+    (global_var_definition
+      (identifier)
+      (plain_type
+        (type_reference_expression
+          (identifier))))
+    (global_var_definition
+      (identifier)
+      (literal
+        (true)))))
+
+================================================================================
+Empty multiline global variables
+================================================================================
+__global ()
+--------------------------------------------------------------------------------
+
+(source_file
+  (global_var_declaration))
+
+================================================================================
+Simple global variable with attribute
+================================================================================
+[attr]
+__global g_var = 0
+--------------------------------------------------------------------------------
+
+(source_file
+  (global_var_declaration
+    (attributes
+      (attribute
+        (attribute_expression
+          (value_attribute
+            (reference_expression
+              (identifier))))))
+    (global_var_definition
+      (identifier)
+      (literal
+        (int_literal)))))
+
+================================================================================
+Multiline global variables with attributes
+================================================================================
+[attr]
+[attr2]
+__global (
+    g_var = 100
+    g_var2 = 200
+    g_var3 = 300
+)
+--------------------------------------------------------------------------------
+
+(source_file
+  (global_var_declaration
+    (attributes
+      (attribute
+        (attribute_expression
+          (value_attribute
+            (reference_expression
+              (identifier)))))
+      (attribute
+        (attribute_expression
+          (value_attribute
+            (reference_expression
+              (identifier))))))
+    (global_var_definition
+      (identifier)
+      (literal
+        (int_literal)))
+    (global_var_definition
+      (identifier)
+      (literal
+        (int_literal)))
+    (global_var_definition
+      (identifier)
+      (literal
+        (int_literal)))))

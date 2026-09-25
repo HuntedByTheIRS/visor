@@ -1,0 +1,136 @@
+================================================================================
+Simple assert statement
+================================================================================
+assert 100
+--------------------------------------------------------------------------------
+
+(source_file
+  (assert_statement
+    (literal
+      (int_literal))))
+
+================================================================================
+Simple assert statement with condition
+================================================================================
+assert a > b
+--------------------------------------------------------------------------------
+
+(source_file
+  (assert_statement
+    (binary_expression
+      (reference_expression
+        (identifier))
+      (reference_expression
+        (identifier)))))
+
+================================================================================
+Assert statement with message
+================================================================================
+assert a > b, 'a should be greater than b'
+assert a > b, 'a' + 'should be greater than' + 'b'
+assert a > b, '${a} should be greater than ${b}'
+assert a > b, '${a} should' + 'be greater than ${b}'
+assert a > b, a.str()
+assert a > b, a.str() + b.str()
+--------------------------------------------------------------------------------
+
+(source_file
+  (assert_statement
+    (binary_expression
+      (reference_expression
+        (identifier))
+      (reference_expression
+        (identifier)))
+    (literal
+      (interpreted_string_literal)))
+  (assert_statement
+    (binary_expression
+      (reference_expression
+        (identifier))
+      (reference_expression
+        (identifier)))
+    (binary_expression
+      (binary_expression
+        (literal
+          (interpreted_string_literal))
+        (literal
+          (interpreted_string_literal)))
+      (literal
+        (interpreted_string_literal))))
+  (assert_statement
+    (binary_expression
+      (reference_expression
+        (identifier))
+      (reference_expression
+        (identifier)))
+    (literal
+      (interpreted_string_literal
+        (string_interpolation
+          (interpolation_opening)
+          (interpolation_expression
+            (reference_expression
+              (identifier)))
+          (interpolation_closing))
+        (string_interpolation
+          (interpolation_opening)
+          (interpolation_expression
+            (reference_expression
+              (identifier)))
+          (interpolation_closing)))))
+  (assert_statement
+    (binary_expression
+      (reference_expression
+        (identifier))
+      (reference_expression
+        (identifier)))
+    (binary_expression
+      (literal
+        (interpreted_string_literal
+          (string_interpolation
+            (interpolation_opening)
+            (interpolation_expression
+              (reference_expression
+                (identifier)))
+            (interpolation_closing))))
+      (literal
+        (interpreted_string_literal
+          (string_interpolation
+            (interpolation_opening)
+            (interpolation_expression
+              (reference_expression
+                (identifier)))
+            (interpolation_closing))))))
+  (assert_statement
+    (binary_expression
+      (reference_expression
+        (identifier))
+      (reference_expression
+        (identifier)))
+    (call_expression
+      (selector_expression
+        (reference_expression
+          (identifier))
+        (reference_expression
+          (identifier)))
+      (argument_list)))
+  (assert_statement
+    (binary_expression
+      (reference_expression
+        (identifier))
+      (reference_expression
+        (identifier)))
+    (binary_expression
+      (call_expression
+        (selector_expression
+          (reference_expression
+            (identifier))
+          (reference_expression
+            (identifier)))
+        (argument_list))
+      (call_expression
+        (selector_expression
+          (reference_expression
+            (identifier))
+          (reference_expression
+            (identifier)))
+        (argument_list)))))

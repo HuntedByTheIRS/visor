@@ -1,0 +1,146 @@
+================================================================================
+Simple method
+================================================================================
+fn (f Foo) foo() {}
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (receiver
+      (identifier)
+      (plain_type
+        (type_reference_expression
+          (identifier))))
+    (identifier)
+    (signature
+      (parameter_list))
+    (block)))
+
+================================================================================
+Simple method with mutable receiver
+================================================================================
+fn (mut f Foo) foo() {}
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (receiver
+      (mutability_modifiers)
+      (identifier)
+      (plain_type
+        (type_reference_expression
+          (identifier))))
+    (identifier)
+    (signature
+      (parameter_list))
+    (block)))
+
+================================================================================
+Simple method with shared receiver
+================================================================================
+fn (shared f Foo) foo() {}
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (receiver
+      (mutability_modifiers)
+      (identifier)
+      (plain_type
+        (type_reference_expression
+          (identifier))))
+    (identifier)
+    (signature
+      (parameter_list))
+    (block)))
+
+================================================================================
+Simple method with pointer receiver
+================================================================================
+fn (f &Foo) foo() {}
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (receiver
+      (identifier)
+      (plain_type
+        (pointer_type
+          (plain_type
+            (type_reference_expression
+              (identifier))))))
+    (identifier)
+    (signature
+      (parameter_list))
+    (block)))
+
+================================================================================
+Overload method
+================================================================================
+fn (f Foo) == (o Foo) {}
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (receiver
+      (identifier)
+      (plain_type
+        (type_reference_expression
+          (identifier))))
+    (overridable_operator)
+    (signature
+      (parameter_list
+        (parameter_declaration
+          (identifier)
+          (plain_type
+            (type_reference_expression
+              (identifier))))))
+    (block)))
+
+================================================================================
+Method with mutable receiver and parameters
+================================================================================
+fn (mut r ResolveProcessor) execute(element PsiElement) bool {}
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (receiver
+      (mutability_modifiers)
+      (identifier)
+      (plain_type
+        (type_reference_expression
+          (identifier))))
+    (identifier)
+    (signature
+      (parameter_list
+        (parameter_declaration
+          (identifier)
+          (plain_type
+            (type_reference_expression
+              (identifier)))))
+      (plain_type
+        (type_reference_expression
+          (identifier))))
+    (block)))
+
+================================================================================
+Method with array parameter
+================================================================================
+pub fn new_stubs_index(sinks []StubIndexSink) {}
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (visibility_modifiers)
+    (identifier)
+    (signature
+      (parameter_list
+        (parameter_declaration
+          (identifier)
+          (plain_type
+            (array_type
+              (plain_type
+                (type_reference_expression
+                  (identifier))))))))
+    (block)))

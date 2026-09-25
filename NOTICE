@@ -1,0 +1,18 @@
+# Third-party notices
+
+## v-analyzer (MIT)
+
+`engine/` and `tree_sitter_v/` are ported from v-analyzer, the V language server
+by the V Open Source Community Association, at commit 925d457.
+
+The license text is in `LICENSES/v-analyzer-MIT/LICENSE`. Every ported file
+carries a two-line header naming v-analyzer, that commit, and the license.
+
+The port is not a copy. The modules move out of the `src/` tree v-analyzer used,
+which V 0.5.2 no longer builds, and the code is adapted where the language
+moved. `engine/VERIFICATION.md` lists the adaptations.
+
+`tree_sitter_v/` is vendored whole, including the tree-sitter runtime and the V
+grammar in C, because the engine's parser imports `tree_sitter_v.bindings` and
+that package pulls its own C through `#flag` lines. Nothing in it comes from the
+system.

@@ -1,0 +1,638 @@
+================================================================================
+Simple function literal
+================================================================================
+fn () {}
+--------------------------------------------------------------------------------
+
+(source_file
+  (simple_statement
+    (function_literal
+      (signature
+        (parameter_list))
+      (block))))
+
+================================================================================
+Simple function literal with parameters
+================================================================================
+fn (a string, b int) {}
+--------------------------------------------------------------------------------
+
+(source_file
+  (simple_statement
+    (function_literal
+      (signature
+        (parameter_list
+          (parameter_declaration
+            (identifier)
+            (plain_type
+              (type_reference_expression
+                (identifier))))
+          (parameter_declaration
+            (identifier)
+            (plain_type
+              (type_reference_expression
+                (identifier))))))
+      (block))))
+
+================================================================================
+Simple function literal with return type
+================================================================================
+fn (a string, b int) Foo {}
+--------------------------------------------------------------------------------
+
+(source_file
+  (simple_statement
+    (function_literal
+      (signature
+        (parameter_list
+          (parameter_declaration
+            (identifier)
+            (plain_type
+              (type_reference_expression
+                (identifier))))
+          (parameter_declaration
+            (identifier)
+            (plain_type
+              (type_reference_expression
+                (identifier)))))
+        (plain_type
+          (type_reference_expression
+            (identifier))))
+      (block))))
+
+================================================================================
+Simple function literal with capture
+================================================================================
+fn [cap] () {}
+--------------------------------------------------------------------------------
+
+(source_file
+  (simple_statement
+    (function_literal
+      (capture_list
+        (capture
+          (reference_expression
+            (identifier))))
+      (signature
+        (parameter_list))
+      (block))))
+
+================================================================================
+Simple function literal with captures
+================================================================================
+fn [cap, cap2] () {}
+--------------------------------------------------------------------------------
+
+(source_file
+  (simple_statement
+    (function_literal
+      (capture_list
+        (capture
+          (reference_expression
+            (identifier)))
+        (capture
+          (reference_expression
+            (identifier))))
+      (signature
+        (parameter_list))
+      (block))))
+
+================================================================================
+Simple function literal with captures with trailing comma
+================================================================================
+fn [cap, cap2, ] () {}
+--------------------------------------------------------------------------------
+
+(source_file
+  (simple_statement
+    (function_literal
+      (capture_list
+        (capture
+          (reference_expression
+            (identifier)))
+        (capture
+          (reference_expression
+            (identifier))))
+      (signature
+        (parameter_list))
+      (block))))
+
+================================================================================
+Simple function literal with mutable captures
+================================================================================
+fn [mut cap, cap2, shared cap3] () {}
+--------------------------------------------------------------------------------
+
+(source_file
+  (simple_statement
+    (function_literal
+      (capture_list
+        (capture
+          (mutability_modifiers)
+          (reference_expression
+            (identifier)))
+        (capture
+          (reference_expression
+            (identifier)))
+        (capture
+          (mutability_modifiers)
+          (reference_expression
+            (identifier))))
+      (signature
+        (parameter_list))
+      (block))))
+
+================================================================================
+Simple function literal with call
+================================================================================
+fn () {}()
+--------------------------------------------------------------------------------
+
+(source_file
+  (simple_statement
+    (call_expression
+      (function_literal
+        (signature
+          (parameter_list))
+        (block))
+      (argument_list))))
+
+================================================================================
+Simple function literal as parameter
+================================================================================
+app.handle(fn (req &Req, res Res) ? {
+    return
+})
+--------------------------------------------------------------------------------
+
+(source_file
+  (simple_statement
+    (call_expression
+      (selector_expression
+        (reference_expression
+          (identifier))
+        (reference_expression
+          (identifier)))
+      (argument_list
+        (argument
+          (function_literal
+            (signature
+              (parameter_list
+                (parameter_declaration
+                  (identifier)
+                  (plain_type
+                    (pointer_type
+                      (plain_type
+                        (type_reference_expression
+                          (identifier))))))
+                (parameter_declaration
+                  (identifier)
+                  (plain_type
+                    (type_reference_expression
+                      (identifier)))))
+              (plain_type
+                (option_type)))
+            (block
+              (return_statement))))))))
+
+================================================================================
+Real-world function literal
+================================================================================
+import nedpals.vex.ctx
+import time
+import context
+import picohttpparser
+
+pub struct Config {
+	cb           fn (voidptr, picohttpparser.Request, mut picohttpparser.Response)
+	err_cb       fn (voidptr, picohttpparser.Request, mut picohttpparser.Response, IError) = default_err_cb
+	user_data    voidptr = unsafe { nil }
+	timeout_secs int     = 8
+	max_headers  int     = 100
+}
+
+fn main() {
+	a := fn (a i64) i64 {
+		return 100
+	}(100)
+
+	if ctx.err() is none {
+		go fn (mut ctx TimerContext, dur time.Duration) {
+			ctx.cancel(true, deadline_exceeded)
+		}(mut ctx, dur)
+	}
+
+	cancel_fn := fn [mut ctx] () {
+		ctx.cancel(true, canceled)
+	}
+}
+
+fn test_with_value() {
+	f := fn (ctx context.Context, key context.Key) &Value {
+		if value := ctx.value(key) {
+			match value {
+				Value {
+					return value
+				}
+				else {}
+			}
+		}
+		return not_found_value
+	}
+
+	key := 'language'
+	value := &Value{
+		val: 'VAL'
+	}
+	ctx := context.with_value(context.background(), key, value)
+
+	assert value == f(ctx, key)
+	assert not_found_value == f(ctx, 'color')
+}
+--------------------------------------------------------------------------------
+
+(source_file
+  (import_list
+    (import_declaration
+      (import_spec
+        (import_path
+          (import_name
+            (identifier))
+          (import_name
+            (identifier))
+          (import_name
+            (identifier)))))
+    (import_declaration
+      (import_spec
+        (import_path
+          (import_name
+            (identifier)))))
+    (import_declaration
+      (import_spec
+        (import_path
+          (import_name
+            (identifier)))))
+    (import_declaration
+      (import_spec
+        (import_path
+          (import_name
+            (identifier))))))
+  (struct_declaration
+    (visibility_modifiers)
+    (identifier)
+    (struct_field_declaration
+      (identifier)
+      (plain_type
+        (function_type
+          (signature
+            (type_parameter_list
+              (type_parameter_declaration
+                (plain_type
+                  (type_reference_expression
+                    (identifier))))
+              (type_parameter_declaration
+                (plain_type
+                  (qualified_type
+                    (reference_expression
+                      (identifier))
+                    (type_reference_expression
+                      (identifier)))))
+              (type_parameter_declaration
+                (mutability_modifiers)
+                (plain_type
+                  (qualified_type
+                    (reference_expression
+                      (identifier))
+                    (type_reference_expression
+                      (identifier))))))))))
+    (struct_field_declaration
+      (identifier)
+      (plain_type
+        (function_type
+          (signature
+            (type_parameter_list
+              (type_parameter_declaration
+                (plain_type
+                  (type_reference_expression
+                    (identifier))))
+              (type_parameter_declaration
+                (plain_type
+                  (qualified_type
+                    (reference_expression
+                      (identifier))
+                    (type_reference_expression
+                      (identifier)))))
+              (type_parameter_declaration
+                (mutability_modifiers)
+                (plain_type
+                  (qualified_type
+                    (reference_expression
+                      (identifier))
+                    (type_reference_expression
+                      (identifier)))))
+              (type_parameter_declaration
+                (plain_type
+                  (type_reference_expression
+                    (identifier))))))))
+      (reference_expression
+        (identifier)))
+    (struct_field_declaration
+      (identifier)
+      (plain_type
+        (type_reference_expression
+          (identifier)))
+      (unsafe_expression
+        (block
+          (simple_statement
+            (literal
+              (nil))))))
+    (struct_field_declaration
+      (identifier)
+      (plain_type
+        (type_reference_expression
+          (identifier)))
+      (literal
+        (int_literal)))
+    (struct_field_declaration
+      (identifier)
+      (plain_type
+        (type_reference_expression
+          (identifier)))
+      (literal
+        (int_literal))))
+  (function_declaration
+    (identifier)
+    (signature
+      (parameter_list))
+    (block
+      (simple_statement
+        (var_declaration
+          (expression_list
+            (reference_expression
+              (identifier)))
+          (expression_list
+            (call_expression
+              (function_literal
+                (signature
+                  (parameter_list
+                    (parameter_declaration
+                      (identifier)
+                      (plain_type
+                        (type_reference_expression
+                          (identifier)))))
+                  (plain_type
+                    (type_reference_expression
+                      (identifier))))
+                (block
+                  (return_statement
+                    (expression_list
+                      (literal
+                        (int_literal))))))
+              (argument_list
+                (argument
+                  (literal
+                    (int_literal))))))))
+      (simple_statement
+        (if_expression
+          (is_expression
+            (call_expression
+              (selector_expression
+                (reference_expression
+                  (identifier))
+                (reference_expression
+                  (identifier)))
+              (argument_list))
+            (plain_type
+              (type_reference_expression
+                (identifier))))
+          (block
+            (simple_statement
+              (go_expression
+                (call_expression
+                  (function_literal
+                    (signature
+                      (parameter_list
+                        (parameter_declaration
+                          (mutability_modifiers)
+                          (identifier)
+                          (plain_type
+                            (type_reference_expression
+                              (identifier))))
+                        (parameter_declaration
+                          (identifier)
+                          (plain_type
+                            (qualified_type
+                              (reference_expression
+                                (identifier))
+                              (type_reference_expression
+                                (identifier)))))))
+                    (block
+                      (simple_statement
+                        (call_expression
+                          (selector_expression
+                            (reference_expression
+                              (identifier))
+                            (reference_expression
+                              (identifier)))
+                          (argument_list
+                            (argument
+                              (literal
+                                (true)))
+                            (argument
+                              (reference_expression
+                                (identifier))))))))
+                  (argument_list
+                    (argument
+                      (mutable_expression
+                        (mutability_modifiers)
+                        (reference_expression
+                          (identifier))))
+                    (argument
+                      (reference_expression
+                        (identifier))))))))))
+      (simple_statement
+        (var_declaration
+          (expression_list
+            (reference_expression
+              (identifier)))
+          (expression_list
+            (function_literal
+              (capture_list
+                (capture
+                  (mutability_modifiers)
+                  (reference_expression
+                    (identifier))))
+              (signature
+                (parameter_list))
+              (block
+                (simple_statement
+                  (call_expression
+                    (selector_expression
+                      (reference_expression
+                        (identifier))
+                      (reference_expression
+                        (identifier)))
+                    (argument_list
+                      (argument
+                        (literal
+                          (true)))
+                      (argument
+                        (reference_expression
+                          (identifier)))))))))))))
+  (function_declaration
+    (identifier)
+    (signature
+      (parameter_list))
+    (block
+      (simple_statement
+        (var_declaration
+          (expression_list
+            (reference_expression
+              (identifier)))
+          (expression_list
+            (function_literal
+              (signature
+                (parameter_list
+                  (parameter_declaration
+                    (identifier)
+                    (plain_type
+                      (qualified_type
+                        (reference_expression
+                          (identifier))
+                        (type_reference_expression
+                          (identifier)))))
+                  (parameter_declaration
+                    (identifier)
+                    (plain_type
+                      (qualified_type
+                        (reference_expression
+                          (identifier))
+                        (type_reference_expression
+                          (identifier))))))
+                (plain_type
+                  (pointer_type
+                    (plain_type
+                      (type_reference_expression
+                        (identifier))))))
+              (block
+                (simple_statement
+                  (if_expression
+                    (var_declaration
+                      (expression_list
+                        (reference_expression
+                          (identifier)))
+                      (expression_list
+                        (call_expression
+                          (selector_expression
+                            (reference_expression
+                              (identifier))
+                            (reference_expression
+                              (identifier)))
+                          (argument_list
+                            (argument
+                              (reference_expression
+                                (identifier)))))))
+                    (block
+                      (simple_statement
+                        (match_expression
+                          (reference_expression
+                            (identifier))
+                          (match_arms
+                            (match_arm
+                              (match_expression_list
+                                (reference_expression
+                                  (identifier)))
+                              (block
+                                (return_statement
+                                  (expression_list
+                                    (reference_expression
+                                      (identifier))))))
+                            (match_else_arm_clause
+                              (block))))))))
+                (return_statement
+                  (expression_list
+                    (reference_expression
+                      (identifier)))))))))
+      (simple_statement
+        (var_declaration
+          (expression_list
+            (reference_expression
+              (identifier)))
+          (expression_list
+            (literal
+              (interpreted_string_literal)))))
+      (simple_statement
+        (var_declaration
+          (expression_list
+            (reference_expression
+              (identifier)))
+          (expression_list
+            (type_initializer
+              (plain_type
+                (pointer_type
+                  (plain_type
+                    (type_reference_expression
+                      (identifier)))))
+              (type_initializer_body
+                (element_list
+                  (keyed_element
+                    (field_name
+                      (reference_expression
+                        (identifier)))
+                    (literal
+                      (interpreted_string_literal)))))))))
+      (simple_statement
+        (var_declaration
+          (expression_list
+            (reference_expression
+              (identifier)))
+          (expression_list
+            (call_expression
+              (selector_expression
+                (reference_expression
+                  (identifier))
+                (reference_expression
+                  (identifier)))
+              (argument_list
+                (argument
+                  (call_expression
+                    (selector_expression
+                      (reference_expression
+                        (identifier))
+                      (reference_expression
+                        (identifier)))
+                    (argument_list)))
+                (argument
+                  (reference_expression
+                    (identifier)))
+                (argument
+                  (reference_expression
+                    (identifier))))))))
+      (assert_statement
+        (binary_expression
+          (reference_expression
+            (identifier))
+          (call_expression
+            (reference_expression
+              (identifier))
+            (argument_list
+              (argument
+                (reference_expression
+                  (identifier)))
+              (argument
+                (reference_expression
+                  (identifier)))))))
+      (assert_statement
+        (binary_expression
+          (reference_expression
+            (identifier))
+          (call_expression
+            (reference_expression
+              (identifier))
+            (argument_list
+              (argument
+                (reference_expression
+                  (identifier)))
+              (argument
+                (literal
+                  (interpreted_string_literal))))))))))
