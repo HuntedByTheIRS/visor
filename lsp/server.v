@@ -208,6 +208,11 @@ pub fn (mut s Server) serve_batch(frames []Frame) {
 	}
 	for m in messages {
 		s.serve_message(m)
+		if s.exit_now {
+			// exit is the end of the session. Anything the client wrote after it
+			// in the same batch is not served.
+			return
+		}
 	}
 }
 
@@ -220,6 +225,13 @@ fn (mut s Server) note_cancel(m Message) {
 }
 
 pub fn (mut s Server) serve_message(m Message) {
+	if m.kind == .invalid {
+		// A body that could not be used has no method and no phase, so it is
+		// answered before the phase check. Otherwise a client whose first frame
+		// was mangled would hear nothing at all.
+		s.serve_invalid(m)
+		return
+	}
 	if refused := s.refuse_before_dispatch(m) {
 		// A request in the wrong phase gets an answer naming the phase. A
 		// notification in the wrong phase is dropped: the client is gone or not
