@@ -113,13 +113,24 @@ fn node_from_binding(node bindings.Node[bindings.NodeType]) Node {
 		}
 	}
 	return Node{
-		kind:       node.type_name.str()
+		kind:       node_kind(node.type_name)
 		start_byte: node.start_byte()
 		end_byte:   node.end_byte()
 		start:      position_from_binding(node.start_point())
 		end:        position_from_binding(node.end_point())
 		children:   children
 	}
+}
+
+// node_kind names a node the way the grammar names it, because that is the
+// string a caller looks up. The V enum member behind a node type usually has
+// the same name, but not always: the grammar's `ERROR` is the enum member
+// `error`, so the enum name alone turns every unparseable region into a kind
+// nobody compares against. Members the generator escaped to stay clear of V
+// keywords (`none_`, `type_`, `map_`, `true_`, `false_`, `nil_`) still come out
+// with the escaped spelling.
+fn node_kind(typ bindings.NodeType) string {
+	return if typ == .error { 'ERROR' } else { typ.str() }
 }
 
 fn position_from_binding(point bindings.TSPoint) Position {
