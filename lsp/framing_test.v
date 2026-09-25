@@ -33,6 +33,26 @@ fn reader_for(data string, step int) &FrameReader {
 	return new_frame_reader(io.Reader(c))
 }
 
+fn test_a_content_type_header_is_ignored() {
+	// Content-Type is optional and its value varies by client, so the reader
+	// has to pick out Content-Length from among the headers instead of assuming
+	// the block is one line. Both orders appear in the wild.
+	with_type_last := 'Content-Length: 8\r\nContent-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n{"id":7}'
+	mut first := reader_for(with_type_last, 0)
+	frames := first.read_batch()
+	assert frames.len == 1
+	assert frames[0].kind == .message
+	assert frames[0].body == '{"id":7}'
+
+	with_type_first := 'Content-Type: application/vscode-jsonrpc; charset=utf-8\r\nContent-Length: 8\r\n\r\n{"id":7}'
+	mut second := reader_for(with_type_first, 0)
+	other := second.read_batch()
+	assert other.len == 1
+	assert other[0].kind == .message
+	assert other[0].body == '{"id":7}'
+	assert second.malformed_frames == 0
+}
+
 fn test_reads_a_whole_frame() {
 	mut fr := reader_for(format_frame('{"jsonrpc":"2.0","method":"initialized"}'), 0)
 	frames := fr.read_batch()
