@@ -231,11 +231,11 @@ pub fn (t &TypeInferer) infer_slice_expression_type(element SliceExpression) typ
 }
 
 pub fn (t &TypeInferer) infer_compile_time_if_expression_type(element CompileTimeIfExpression) types.Type {
-	block := element.block()
-	block_type := t.infer_type(block)
+	block := element.block() or { return types.unknown_type }
+	block_type := t.infer_type(PsiElement(block))
 	if block_type is types.UnknownType {
 		else_branch := element.else_branch() or { return types.unknown_type }
-		return t.infer_type(else_branch)
+		return t.infer_type(PsiElement(else_branch))
 	}
 	return block_type
 }
@@ -247,7 +247,7 @@ pub fn (t &TypeInferer) infer_match_expression_type(element MatchExpression) typ
 	}
 	first := arms.first()
 	block := first.find_child_by_name('block') or { return types.unknown_type }
-	return t.infer_type(block)
+	return t.infer_type(PsiElement(block))
 }
 
 pub fn (t &TypeInferer) infer_array_creation_type(element ArrayCreation) types.Type {
@@ -380,18 +380,18 @@ pub fn (t &TypeInferer) infer_reference_expression_type(element ReferenceExpress
 }
 
 pub fn (t &TypeInferer) infer_if_expression_type(element IfExpression) types.Type {
-	block := element.block()
-	block_type := t.infer_type(block)
+	block := element.block() or { return types.unknown_type }
+	block_type := t.infer_type(PsiElement(block))
 	if block_type is types.UnknownType {
 		else_branch := element.else_branch() or { return types.unknown_type }
-		return t.infer_type(else_branch)
+		return t.infer_type(PsiElement(else_branch))
 	}
 	return block_type
 }
 
 pub fn (t &TypeInferer) infer_unsafe_expression_type(element UnsafeExpression) types.Type {
-	block := element.block()
-	return t.infer_type(block)
+	block := element.block() or { return types.unknown_type }
+	return t.infer_type(PsiElement(block))
 }
 
 pub fn (t &TypeInferer) infer_type_initializer_type(element TypeInitializer, mut visited map[string]types.Type) types.Type {
@@ -418,13 +418,18 @@ pub fn (t &TypeInferer) infer_range_type(element Range) types.Type {
 
 pub fn (t &TypeInferer) process_signature(signature Signature) types.Type {
 	params := signature.parameters()
-	param_types := params.map(fn (it PsiElement) types.Type {
+	// Written as a loop: V 0.5.2 gives the map result the type of the closure
+	// instead of the type the closure returns, which the C generator then uses
+	// as the element size.
+	mut param_types := []types.Type{cap: params.len}
+	for param in params {
 		// TODO: support fn (int, string) without names
-		if it is PsiTypedElement {
-			return it.get_type()
+		if param is PsiTypedElement {
+			param_types << param.get_type()
+		} else {
+			param_types << types.unknown_type
 		}
-		return types.unknown_type
-	})
+	}
 	result := signature.result()
 	mut visited := map[string]types.Type{}
 	result_type := t.convert_type(result, mut visited)

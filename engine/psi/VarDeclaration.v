@@ -50,15 +50,15 @@ fn (v VarDeclaration) initializer_of(def VarDefinition) ?PsiElement {
 
 pub fn (v VarDeclaration) vars() []PsiElement {
 	first_child := v.first_child() or { return [] }
-	return first_child
-		.children()
-		.filter(it is VarDefinition || it is MutExpression)
-		.map(fn (it PsiElement) PsiElement {
-			if it is MutExpression {
-				return it.last_child() or { return it }
-			}
-			return it
-		})
+	mut vars := []PsiElement{}
+	for child in first_child.children() {
+		if child is VarDefinition {
+			vars << child
+		} else if child is MutExpression {
+			vars << (child.last_child() or { PsiElement(child) })
+		}
+	}
+	return vars
 }
 
 fn (v VarDeclaration) expressions() []PsiElement {

@@ -86,8 +86,14 @@ fn (g &GenericTypeInferer) infer_simple_generic_ts_map(arg_owner GenericArgument
 			signature := params_owner.signature() or { return map[string]types.Type{} }
 			parameters := signature.parameters()
 
-			arguments_types := arguments.map(infer_type(it))
-			parameters_types := parameters.map(infer_type(it))
+			mut arguments_types := []types.Type{cap: arguments.len}
+			for argument in arguments {
+				arguments_types << infer_type(PsiElement(argument))
+			}
+			mut parameters_types := []types.Type{cap: parameters.len}
+			for parameter in parameters {
+				parameters_types << infer_type(PsiElement(parameter))
+			}
 
 			mut reifier := GenericTypeReifier{}
 			reifier.reify_generic_ts(parameters_types, arguments_types)

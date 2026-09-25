@@ -8,9 +8,9 @@ pub:
 	types []Type
 }
 
-pub fn new_multi_return_type(types []Type) &MultiReturnType {
+pub fn new_multi_return_type(member_types []Type) &MultiReturnType {
 	return &MultiReturnType{
-		types: types
+		types: member_types
 	}
 }
 

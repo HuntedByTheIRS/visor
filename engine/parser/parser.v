@@ -16,7 +16,7 @@ pub mut:
 }
 
 // Source represent the possible types of V source code to parse.
-type Source = []u8 | string
+pub type Source = []u8 | string
 
 // Parser is a wrapper around the Tree-sitter V parser.
 pub struct Parser {

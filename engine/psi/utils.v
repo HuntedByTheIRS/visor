@@ -11,7 +11,8 @@ pub fn get_it_call(element PsiElement) ?&CallExpression {
 			if expression.is_parent_of(element) {
 				// when it used as expression of call
 				// it.foo()
-				parent_call = parent_call.parent_of_type(.call_expression) or { break }
+				next_call := parent_call.parent_of_type(.call_expression) or { break }
+				parent_call = PsiElement(next_call)
 				continue
 			}
 
