@@ -10,7 +10,12 @@ on:
   workflow_dispatch:
 
 env:
-  V_TAG: '0.5.2'
+  # visor's lsp module imports json2. V added vlib/json2 after the 0.5.2 tag, so
+  # the 0.5.2 release asset cannot build this tree, and no newer release exists
+  # yet. vlib/json is deprecated in favour of json2 ("`json` will be removed
+  # soon; use the pure V `json2` module instead"), so going back is not an
+  # option either. CI therefore builds V master from source.
+  V_REPO: 'https://github.com/vlang/v'
 
 jobs:
   build-and-test:
@@ -26,7 +31,7 @@ jobs:
           # runner's ubuntu:24.04 image has no node and the job dies at exit 127
           # before a build step runs. GitHub's runner ships it already, so the
           # install is a no-op there.
-          $SUDO apt-get install -y -qq git curl make gcc nodejs unzip >/dev/null
+          $SUDO apt-get install -y -qq git curl make gcc nodejs >/dev/null
           node --version
 
       - name: Checkout visor
@@ -34,14 +39,22 @@ jobs:
 
       - name: Install the V compiler
         run: |
-          # The release asset, not a source build. Building V from source with
-          # `make` trips the driver's own memory guard on the Gitea runner
-          # ("v3 compiler memory usage reached 9994 MiB RSS ... limit: 9984 MiB")
-          # during the v2 stage of cmd/v, and it costs minutes per run.
-          curl -fsSL -o /tmp/v.zip "https://github.com/vlang/v/releases/download/${V_TAG}/v_linux.zip"
-          unzip -q /tmp/v.zip -d /opt
-          /opt/v/v version
-          echo /opt/v >> "$GITHUB_PATH"
+          # From source, because the release asset is a dead end for this tree
+          # (see the note on V_REPO above).
+          #
+          # The bootstrap is what makes this fit in memory: V's Makefile compiles
+          # the portable snapshot in vc/v.c with clang, keeping the
+          # V1-compatibility executable on the bootstrap path, and walks
+          # v1 -> v2 -> v. V3 never enters that chain, so this does not hit the
+          # driver guard that stopped the 0.5.2 tree's make on the Gitea runner
+          # ("v3 compiler memory usage reached 9994 MiB RSS ... limit: 9984 MiB").
+          # Measured here: 187s for the clone plus the build.
+          git clone --depth 1 "$V_REPO" "$HOME/vlang"
+          cd "$HOME/vlang"
+          make
+          ./v version
+          test -d vlib/json2 || { echo "this V has no vlib/json2; the LSP layer needs it"; exit 1; }
+          echo "$HOME/vlang" >> "$GITHUB_PATH"
 
       - name: Build visor
         run: v -o /tmp/visor .

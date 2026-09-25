@@ -76,6 +76,12 @@ Linux on amd64 or arm64, with a V compiler on `PATH`. The server probes
 `v version` at startup and tells you when a flag it depends on is missing,
 rather than quietly returning an empty result.
 
+The protocol layer imports `json2`, which V added after the 0.5.2 release, so the
+tree needs a current V master: a 0.5.2 release asset cannot build it, and CI
+builds V master from source for that reason. `vlib/json` is not an alternative,
+being deprecated in favour of `json2` ("`json` will be removed soon; use the pure
+V `json2` module instead").
+
 Compiler discovery order: `VISOR_V_COMMAND`, then `VEXE`, then `v` on `PATH`.
 
 ## Build
