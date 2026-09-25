@@ -1,0 +1,32 @@
+# Avoid including irrelevant files
+node_modules/
+*.log
+build/
+package-lock.json
+Package.swift
+
+# Ignore binary output folders
+bin/
+
+# Ignore common editor/system specific metadata
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+target/
+Cargo.lock
+yarn.lock
+
+Cargo.toml
+
+bindings/c/
+bindings/go/
+bindings/node/
+bindings/python/
+bindings/rust/
+bindings/swift/
+binding.gyp
+
+pyproject.toml
+setup.py
