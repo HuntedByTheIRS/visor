@@ -80,7 +80,8 @@ The protocol layer imports `json2`, which V added after the 0.5.2 release, so th
 tree needs a current V master: a 0.5.2 release asset cannot build it, and CI
 builds V master from source for that reason. `vlib/json` is not an alternative,
 being deprecated in favour of `json2` ("`json` will be removed soon; use the pure
-V `json2` module instead").
+V `json2` module instead"). The 0.1.x series gives visor its own JSON layer and
+lowers this floor again; `ROADMAP.md` carries the reasoning.
 
 Compiler discovery order: `VISOR_V_COMMAND`, then `VEXE`, then `v` on `PATH`.
 
