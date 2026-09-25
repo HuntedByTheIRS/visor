@@ -69,11 +69,10 @@ covers how people treat each other in all of those places.
 
 ## Before you open a pull request
 
-Run the four checks above, add a dated row to `docs/verification.md` for what
-you verified, and fill in the template. A green build on its own does not close
-a lane: the lane's command has to appear in `docs/verification.md` with its
+Run the four checks above, add a dated row to the touched module's
+`VERIFICATION.md` for what you verified, and fill in the template. A green build
+on its own does not close a lane: the command has to appear there with its
 observed result.
 
-Two lanes running at once never edit the same file. A lane working in parallel
-stages its rows in `<module>/VERIFICATION.md`, and whoever integrates the lanes
-moves them into `docs/verification.md`.
+Two lanes running at once never edit the same file, so each writes its rows to
+its own module's `VERIFICATION.md`.

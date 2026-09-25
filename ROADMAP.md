@@ -17,7 +17,7 @@ v-analyzer is what makes the full set reachable in one release.
 - formatting, which delegates to `v fmt`
 
 Acceptance for the release is the criteria in the plan, each with an observed
-result in `docs/verification.md`.
+result in the module's `VERIFICATION.md`.
 
 ## Release cadence
 
