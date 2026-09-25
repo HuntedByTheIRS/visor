@@ -61,6 +61,18 @@ fn test_a_large_reply_on_stderr_is_drained() {
 	assert r.stderr.len == input.len
 }
 
+fn test_a_child_that_exits_without_reading_does_not_kill_us() {
+	// `echo` never reads its stdin and is gone in a millisecond, so the buffer
+	// is written into a pipe with no reader. Without a masked SIGPIPE that
+	// write kills this process, and the test binary dies with no output at all.
+	big := big_text()
+	r := exec(sh(), ['-c', 'exit 0'], big, '', false)
+	assert r.spawn_err == ''
+	assert r.exit_code == 0
+	// The write was abandoned, and the process is still here to say so.
+	assert r.stdout == ''
+}
+
 fn test_a_missing_binary_reports_a_spawn_error() {
 	r := exec('/nonexistent/definitely-not-a-compiler', [], '', '', false)
 	assert r.spawn_err != ''
