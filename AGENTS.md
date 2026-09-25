@@ -41,6 +41,10 @@ A build that compiles is not a finished lane. Each lane ends with its own
 command plus a dated row in `docs/verification.md`. Report what you ran and what
 came back. If something is unverified, say so rather than leaving it implied.
 
+A lane running beside other lanes writes that row to `<module>/VERIFICATION.md`
+instead, and the person integrating the lanes copies it across. Two lanes never
+edit the same file.
+
 ## Commit shape
 
 Small commits, one logical change each, made as you go. A module that compiles,

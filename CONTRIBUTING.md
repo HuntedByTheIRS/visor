@@ -65,3 +65,7 @@ Run the four checks above, add a dated row to `docs/verification.md` for what
 you verified, and fill in the template. A green build on its own does not close
 a lane: the lane's command has to appear in `docs/verification.md` with its
 observed result.
+
+Two lanes running at once never edit the same file. A lane working in parallel
+stages its rows in `<module>/VERIFICATION.md`, and whoever integrates the lanes
+moves them into `docs/verification.md`.
