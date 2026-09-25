@@ -70,6 +70,14 @@ fn exec(cpath string, args []string, input string, work_folder string, merged bo
 		p.set_redirect_stdio()
 	}
 	p.run()
+	// A compiler that exits before reading the whole buffer leaves the pipe
+	// with no reader at the other end. Writing to it then raises SIGPIPE, whose
+	// default action kills visor mid-request; the compiler was already gone, so
+	// nothing is lost by ignoring the signal and letting the write report the
+	// broken pipe, which fd_write already swallows. visor is a server on a pipe
+	// of its own, so it wants a closed connection to surface as an error rather
+	// than as a silent death either way.
+	os.signal_ignore(.pipe)
 	mut out := strings.new_builder(4096)
 	mut errs := strings.new_builder(1024)
 	mut written := 0
