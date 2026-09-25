@@ -11,7 +11,7 @@ is on PATH, which is why the pinned list is relative to it.
 | ID | Command | Observed result | Date |
 |---|---|---|---|
 | L3 | `v -o /tmp/visor-corpus engine/corpus_test.v && /tmp/visor-corpus` | 30 files, 31,406 lines, 379,504 nodes, 34 `ERROR` nodes, 11 `MISSING` nodes, exit 0 | 2026-09-25 |
-| L3 | `v test engine/` | 4 test files, 13 test functions, `4 passed, 4 total`, exit 0 | 2026-09-25 |
+| L3 | `v test engine/` | 4 test files, 10 test functions, `4 passed, 4 total`, exit 0 | 2026-09-25 |
 
 ## Threshold against measurement
 
