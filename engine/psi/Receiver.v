@@ -38,9 +38,11 @@ pub fn (r &Receiver) name() string {
 pub fn (r &Receiver) type_element() ?PsiElement {
 	if stub := r.get_stub() {
 		if receiver_stub := stub.get_child_by_type(.plain_type) {
-			psi := receiver_stub.get_psi()?
-			if psi is PlainType {
-				return psi
+			// The local cannot be called `psi`: V 0.5.2 rejects a name that
+			// repeats a module name in the project.
+			element := receiver_stub.get_psi()?
+			if element is PlainType {
+				return element
 			}
 		}
 		return none

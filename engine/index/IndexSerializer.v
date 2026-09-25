@@ -10,25 +10,25 @@ mut:
 	s Serializer
 }
 
-pub fn (mut s IndexSerializer) serialize_index(index Index) {
-	s.s.write_string(index.version)
-	s.s.write_i64(index.updated_at.unix())
-	s.serialize_file_indexes(index.per_file.data)
+pub fn (mut s IndexSerializer) serialize_index(value Index) {
+	s.s.write_string(value.version)
+	s.s.write_i64(value.updated_at.unix())
+	s.serialize_file_indexes(value.per_file.data)
 }
 
 pub fn (mut s IndexSerializer) serialize_file_indexes(indexes map[string]FileIndex) {
 	s.s.write_int(indexes.len)
-	for _, index in indexes {
-		s.serialize_file_index(index)
+	for _, file_index in indexes {
+		s.serialize_file_index(file_index)
 	}
 }
 
-pub fn (mut s IndexSerializer) serialize_file_index(index FileIndex) {
-	s.s.write_u8(u8(index.kind))
-	s.s.write_i64(index.file_last_modified)
+pub fn (mut s IndexSerializer) serialize_file_index(value FileIndex) {
+	s.s.write_u8(u8(value.kind))
+	s.s.write_i64(value.file_last_modified)
 
-	s.serialize_stub_list(index.stub_list)
-	s.serialize_stub_index_sink(index.sink)
+	s.serialize_stub_list(value.stub_list)
+	s.serialize_stub_index_sink(value.sink)
 }
 
 pub fn (mut s IndexSerializer) serialize_stub_index_sink(sink &psi.StubIndexSink) {

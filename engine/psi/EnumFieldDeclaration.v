@@ -96,9 +96,11 @@ pub fn (f &EnumFieldDeclaration) owner() ?&EnumDeclaration {
 		return none
 	}
 
-	psi := f.parent_of_type(.enum_declaration)?
-	if psi is EnumDeclaration {
-		return psi
+	// The local cannot be called `psi`: V 0.5.2 rejects a name that repeats a
+	// module name in the project.
+	enum_declaration := f.parent_of_type(.enum_declaration)?
+	if enum_declaration is EnumDeclaration {
+		return enum_declaration
 	}
 
 	return none
