@@ -37,13 +37,9 @@ CI greps for the first two. Review catches the rest, so do not rely on CI.
 
 ## Verify before you claim
 
-A build that compiles is not a finished lane. Each lane ends with its own
-command plus a dated row in `<module>/VERIFICATION.md`. Report what you ran and
-what came back. If something is unverified, say so rather than leaving it
-implied.
-
-Two lanes running at once never edit the same file, so a lane records its rows
-where it works rather than in a shared document.
+A build that compiles is not a finished change. Run the command that covers what
+you touched, and report what you ran and what came back. If something is
+unverified, say so rather than leaving it implied.
 
 ## Commit shape
 

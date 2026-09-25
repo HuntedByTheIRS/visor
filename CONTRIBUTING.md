@@ -69,10 +69,5 @@ covers how people treat each other in all of those places.
 
 ## Before you open a pull request
 
-Run the four checks above, add a dated row to the touched module's
-`VERIFICATION.md` for what you verified, and fill in the template. A green build
-on its own does not close a lane: the command has to appear there with its
-observed result.
-
-Two lanes running at once never edit the same file, so each writes its rows to
-its own module's `VERIFICATION.md`.
+Run the checks above and fill in the template. A green build is not evidence on
+its own: the pull request says which commands ran and what they printed.

@@ -16,8 +16,8 @@ v-analyzer is what makes the full set reachable in one release.
 - code actions, code lens, call hierarchy
 - formatting, which delegates to `v fmt`
 
-Acceptance for the release is the criteria in the plan, each with an observed
-result in the module's `VERIFICATION.md`.
+Acceptance for the release is the criteria in the plan, each one shown by a
+command and the result it printed.
 
 ## Compiler floor
 

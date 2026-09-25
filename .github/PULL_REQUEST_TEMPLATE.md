@@ -8,8 +8,7 @@
 - [ ] `v fmt -verify .` exits 0
 - [ ] `v test .` is green
 - [ ] the compiler-internal import and V1 protocol grep gates pass
-- [ ] the modules this change touches carry a dated row in their `VERIFICATION.md`
-- [ ] every command in that row was run from a clean checkout
+- [ ] every command reported here was run from a clean checkout
 
 ## Prose audit
 

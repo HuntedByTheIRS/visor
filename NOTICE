@@ -10,7 +10,7 @@ carries a two-line header naming v-analyzer, that commit, and the license.
 
 The port is not a copy. The modules move out of the `src/` tree v-analyzer used,
 which V 0.5.2 no longer builds, and the code is adapted where the language
-moved. `engine/VERIFICATION.md` lists the adaptations.
+moved.
 
 `tree_sitter_v/` is vendored whole, including the tree-sitter runtime and the V
 grammar in C, because the engine's parser imports `tree_sitter_v.bindings` and
