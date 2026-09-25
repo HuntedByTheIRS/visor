@@ -327,15 +327,18 @@ fn (node C.TSNode) is_error() bool {
 	return C.ts_node_has_error(node)
 }
 
+// V 0.5.2 resolves a method on the receiver of a C struct method but not on a
+// local of that C struct type, so the checks on locals below call the C
+// functions the methods forward to.
 pub fn (node C.TSNode) parent_nth(depth int) ?TSNode {
 	if node.is_null() {
 		return none
 	}
 	mut res := node
 	for _ in 0 .. depth {
-		res = res.parent()?
+		res = C.ts_node_parent(res)
 	}
-	if res.is_null() {
+	if C.ts_node_is_null(res) {
 		return none
 	}
 	return res
@@ -346,7 +349,7 @@ pub fn (node C.TSNode) parent() ?C.TSNode {
 		return none
 	}
 	parent := C.ts_node_parent(node)
-	if parent.is_null() {
+	if C.ts_node_is_null(parent) {
 		return none
 	}
 	return parent
@@ -361,7 +364,7 @@ pub fn (node C.TSNode) first_child() ?C.TSNode {
 		return none
 	}
 	child := C.ts_node_child(node, 0)
-	if child.is_null() {
+	if C.ts_node_is_null(child) {
 		return none
 	}
 	return child
@@ -376,7 +379,7 @@ pub fn (node C.TSNode) last_child() ?C.TSNode {
 		return none
 	}
 	child := C.ts_node_child(node, count_child - 1)
-	if child.is_null() {
+	if C.ts_node_is_null(child) {
 		return none
 	}
 	return child
@@ -387,7 +390,7 @@ fn (node C.TSNode) child(index u32) ?C.TSNode {
 		return none
 	}
 	child := C.ts_node_child(node, index)
-	if child.is_null() {
+	if C.ts_node_is_null(child) {
 		return none
 	}
 	return child
@@ -403,7 +406,7 @@ fn (node C.TSNode) named_child(pos u32) ?C.TSNode {
 		return none
 	}
 	child := C.ts_node_named_child(node, pos)
-	if child.is_null() {
+	if C.ts_node_is_null(child) {
 		return none
 	}
 	return child
@@ -421,7 +424,7 @@ pub fn (node C.TSNode) child_by_field_name(name string) ?C.TSNode {
 		return none
 	}
 	child := C.ts_node_child_by_field_name(node, &char(name.str), u32(name.len))
-	if child.is_null() {
+	if C.ts_node_is_null(child) {
 		return none
 	}
 
@@ -433,7 +436,7 @@ fn (node C.TSNode) next_sibling() ?C.TSNode {
 		return none
 	}
 	sibling := C.ts_node_next_sibling(node)
-	if sibling.is_null() {
+	if C.ts_node_is_null(sibling) {
 		return none
 	}
 	return sibling
@@ -444,7 +447,7 @@ fn (node C.TSNode) prev_sibling() ?C.TSNode {
 		return none
 	}
 	sibling := C.ts_node_prev_sibling(node)
-	if sibling.is_null() {
+	if C.ts_node_is_null(sibling) {
 		return none
 	}
 	return sibling
@@ -455,7 +458,7 @@ fn (node C.TSNode) next_named_sibling() ?C.TSNode {
 		return none
 	}
 	sibling := C.ts_node_next_named_sibling(node)
-	if sibling.is_null() {
+	if C.ts_node_is_null(sibling) {
 		return none
 	}
 	return sibling
@@ -466,7 +469,7 @@ fn (node C.TSNode) prev_named_sibling() ?C.TSNode {
 		return none
 	}
 	sibling := C.ts_node_prev_named_sibling(node)
-	if sibling.is_null() {
+	if C.ts_node_is_null(sibling) {
 		return none
 	}
 	return sibling
@@ -477,7 +480,7 @@ fn (node C.TSNode) first_child_for_byte(offset u32) ?C.TSNode {
 		return none
 	}
 	got_node := C.ts_node_first_child_for_byte(node, offset)
-	if got_node.is_null() {
+	if C.ts_node_is_null(got_node) {
 		return none
 	}
 	return got_node
@@ -488,7 +491,7 @@ fn (node C.TSNode) first_named_child_for_byte(offset u32) ?C.TSNode {
 		return none
 	}
 	got_node := C.ts_node_first_named_child_for_byte(node, offset)
-	if got_node.is_null() {
+	if C.ts_node_is_null(got_node) {
 		return none
 	}
 	return got_node
@@ -499,7 +502,7 @@ fn (node C.TSNode) descendant_for_byte_range(start_range u32, end_range u32) ?C.
 		return none
 	}
 	got_node := C.ts_node_descendant_for_byte_range(node, start_range, end_range)
-	if got_node.is_null() {
+	if C.ts_node_is_null(got_node) {
 		return none
 	}
 	return got_node
@@ -510,7 +513,7 @@ fn (node C.TSNode) descendant_for_point_range(start_point C.TSPoint, end_point C
 		return none
 	}
 	got_node := C.ts_node_descendant_for_point_range(node, start_point, end_point)
-	if got_node.is_null() {
+	if C.ts_node_is_null(got_node) {
 		return none
 	}
 	return got_node
@@ -521,7 +524,7 @@ fn (node C.TSNode) named_descendant_for_byte_range(start_range u32, end_range u3
 		return none
 	}
 	got_node := C.ts_node_named_descendant_for_byte_range(node, start_range, end_range)
-	if got_node.is_null() {
+	if C.ts_node_is_null(got_node) {
 		return none
 	}
 	return got_node
@@ -532,7 +535,7 @@ fn (node C.TSNode) named_descendant_for_point_range(start_point C.TSPoint, end_p
 		return none
 	}
 	got_node := C.ts_node_named_descendant_for_point_range(node, start_point, end_point)
-	if got_node.is_null() {
+	if C.ts_node_is_null(got_node) {
 		return none
 	}
 	return got_node
@@ -579,7 +582,7 @@ pub type TSNode = C.TSNode
 @[inline]
 pub fn (cursor &C.TSTreeCursor) current_node() ?TSNode {
 	got_node := C.ts_tree_cursor_current_node(cursor)
-	if got_node.is_null() {
+	if C.ts_node_is_null(got_node) {
 		return none
 	}
 	return got_node
@@ -637,8 +640,217 @@ pub:
 }
 
 fn (left_range C.TSRange) eq(right_range C.TSRange) bool {
-	return left_range.start_point.eq(right_range.start_point)
-		&& left_range.end_point.eq(right_range.end_point)
+	// The two points are fields of a C struct, and V 0.5.2 does not resolve a
+	// method on those, so the point comparison is spelled out.
+	return left_range.start_point.row == right_range.start_point.row
+		&& left_range.start_point.column == right_range.start_point.column
+		&& left_range.end_point.row == right_range.end_point.row
+		&& left_range.end_point.column == right_range.end_point.column
 		&& left_range.start_byte == right_range.start_byte
 		&& left_range.end_byte == right_range.end_byte
+}
+
+// V 0.5.2 resolves a method on the receiver of a C struct method, but not on a
+// C struct value reached through a field or a generic parameter, which is how
+// bindings.v holds these values. The operations that carry logic, and the ones
+// that answer none for a null node, are therefore written out here as plain
+// functions. The methods above stay for callers that hold the node as a
+// receiver.
+pub fn ts_node_type_name(node C.TSNode) string {
+	if C.ts_node_is_null(node) {
+		return '<null node>'
+	}
+	c := &char(C.ts_node_type(node))
+	return unsafe { c.vstring() }
+}
+
+pub fn ts_node_sexpr(node C.TSNode) string {
+	if C.ts_node_is_null(node) {
+		return '<null node>'
+	}
+	sexpr := C.ts_node_string(node)
+	return unsafe { sexpr.vstring() }
+}
+
+pub fn ts_node_text(node C.TSNode, text string) string {
+	if C.ts_node_is_null(node) {
+		return ''
+	}
+	start_index := C.ts_node_start_byte(node)
+	end_index := C.ts_node_end_byte(node)
+	if start_index >= end_index || start_index >= u32(text.len) || end_index > u32(text.len) {
+		return ''
+	}
+	return text.substr(int(start_index), int(end_index))
+}
+
+pub fn ts_node_parent(node C.TSNode) ?C.TSNode {
+	if C.ts_node_is_null(node) {
+		return none
+	}
+	parent := C.ts_node_parent(node)
+	if C.ts_node_is_null(parent) {
+		return none
+	}
+	return parent
+}
+
+pub fn ts_node_child(node C.TSNode, index u32) ?C.TSNode {
+	if C.ts_node_is_null(node) {
+		return none
+	}
+	child := C.ts_node_child(node, index)
+	if C.ts_node_is_null(child) {
+		return none
+	}
+	return child
+}
+
+pub fn ts_node_named_child(node C.TSNode, index u32) ?C.TSNode {
+	if C.ts_node_is_null(node) {
+		return none
+	}
+	child := C.ts_node_named_child(node, index)
+	if C.ts_node_is_null(child) {
+		return none
+	}
+	return child
+}
+
+pub fn ts_node_child_by_field_name(node C.TSNode, name string) ?C.TSNode {
+	if C.ts_node_is_null(node) {
+		return none
+	}
+	child := C.ts_node_child_by_field_name(node, &char(name.str), u32(name.len))
+	if C.ts_node_is_null(child) {
+		return none
+	}
+	return child
+}
+
+pub fn ts_node_next_sibling(node C.TSNode) ?C.TSNode {
+	if C.ts_node_is_null(node) {
+		return none
+	}
+	sibling := C.ts_node_next_sibling(node)
+	if C.ts_node_is_null(sibling) {
+		return none
+	}
+	return sibling
+}
+
+pub fn ts_node_prev_sibling(node C.TSNode) ?C.TSNode {
+	if C.ts_node_is_null(node) {
+		return none
+	}
+	sibling := C.ts_node_prev_sibling(node)
+	if C.ts_node_is_null(sibling) {
+		return none
+	}
+	return sibling
+}
+
+pub fn ts_node_next_named_sibling(node C.TSNode) ?C.TSNode {
+	if C.ts_node_is_null(node) {
+		return none
+	}
+	sibling := C.ts_node_next_named_sibling(node)
+	if C.ts_node_is_null(sibling) {
+		return none
+	}
+	return sibling
+}
+
+pub fn ts_node_prev_named_sibling(node C.TSNode) ?C.TSNode {
+	if C.ts_node_is_null(node) {
+		return none
+	}
+	sibling := C.ts_node_prev_named_sibling(node)
+	if C.ts_node_is_null(sibling) {
+		return none
+	}
+	return sibling
+}
+
+pub fn ts_node_first_child_for_byte(node C.TSNode, offset u32) ?C.TSNode {
+	if C.ts_node_is_null(node) {
+		return none
+	}
+	child := C.ts_node_first_child_for_byte(node, offset)
+	if C.ts_node_is_null(child) {
+		return none
+	}
+	return child
+}
+
+pub fn ts_node_first_named_child_for_byte(node C.TSNode, offset u32) ?C.TSNode {
+	if C.ts_node_is_null(node) {
+		return none
+	}
+	child := C.ts_node_first_named_child_for_byte(node, offset)
+	if C.ts_node_is_null(child) {
+		return none
+	}
+	return child
+}
+
+pub fn ts_node_descendant_for_byte_range(node C.TSNode, start_range u32, end_range u32) ?C.TSNode {
+	if C.ts_node_is_null(node) {
+		return none
+	}
+	desc := C.ts_node_descendant_for_byte_range(node, start_range, end_range)
+	if C.ts_node_is_null(desc) {
+		return none
+	}
+	return desc
+}
+
+pub fn ts_node_descendant_for_point_range(node C.TSNode, start_point C.TSPoint, end_point C.TSPoint) ?C.TSNode {
+	if C.ts_node_is_null(node) {
+		return none
+	}
+	desc := C.ts_node_descendant_for_point_range(node, start_point, end_point)
+	if C.ts_node_is_null(desc) {
+		return none
+	}
+	return desc
+}
+
+pub fn ts_node_named_descendant_for_byte_range(node C.TSNode, start_range u32, end_range u32) ?C.TSNode {
+	if C.ts_node_is_null(node) {
+		return none
+	}
+	desc := C.ts_node_named_descendant_for_byte_range(node, start_range, end_range)
+	if C.ts_node_is_null(desc) {
+		return none
+	}
+	return desc
+}
+
+pub fn ts_node_named_descendant_for_point_range(node C.TSNode, start_point C.TSPoint, end_point C.TSPoint) ?C.TSNode {
+	if C.ts_node_is_null(node) {
+		return none
+	}
+	desc := C.ts_node_named_descendant_for_point_range(node, start_point, end_point)
+	if C.ts_node_is_null(desc) {
+		return none
+	}
+	return desc
+}
+
+pub fn ts_cursor_field_name(cursor &C.TSTreeCursor) string {
+	c := &char(C.ts_tree_cursor_current_field_name(cursor))
+	return unsafe { c.vstring() }
+}
+
+pub fn ts_cursor_current_node(cursor &C.TSTreeCursor) ?C.TSNode {
+	got_node := C.ts_tree_cursor_current_node(cursor)
+	if C.ts_node_is_null(got_node) {
+		return none
+	}
+	return got_node
+}
+
+pub fn ts_parser_parse_string(parser &C.TSParser, source string, old_tree &TSTree) &TSTree {
+	return unsafe { &TSTree(C.ts_parser_parse_string(parser, voidptr(old_tree), &char(source.str), u32(source.len))) }
 }
