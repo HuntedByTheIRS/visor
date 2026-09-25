@@ -47,7 +47,7 @@ pub fn (mut l Logger) use_color_mode(mode ColorMode) {
 
 @[inline]
 pub fn (mut l Logger) use_color_mode_string(mode string) {
-	enum_value := get_color_mode_by_name(mode) or { .auto }
+	enum_value := get_color_mode_by_name(mode) or { ColorMode.auto }
 	l.color_mode = enum_value
 }
 
