@@ -1,8 +1,6 @@
 name: ci
 
-# One workflow for both hosts. GitHub Actions reads this path natively, and the
-# Gitea instance reads it too when .gitea/workflows/ is absent. Keeping a second
-# copy under .gitea/ would only give the two a chance to drift apart.
+# GitHub Actions is the only host: the Gitea mirror is archived and read-only.
 on:
   push:
     branches: [main]
@@ -27,10 +25,10 @@ jobs:
           SUDO=''
           if [ "$(id -u)" != '0' ]; then SUDO=sudo; fi
           $SUDO apt-get update -qq
-          # nodejs is for actions/checkout, a JavaScript action. The Gitea
-          # runner's ubuntu:24.04 image has no node and the job dies at exit 127
-          # before a build step runs. GitHub's runner ships it already, so the
-          # install is a no-op there.
+          # nodejs is for actions/checkout, a JavaScript action. The runner
+          # ships it, so the install is normally a no-op; it keeps the job from
+          # depending on what the image happens to carry. Without node the job
+          # dies at exit 127 before a build step runs.
           $SUDO apt-get install -y -qq git curl make gcc nodejs >/dev/null
           node --version
 
@@ -45,8 +43,8 @@ jobs:
           # The bootstrap is what makes this fit in memory: V's Makefile compiles
           # the portable snapshot in vc/v.c with clang, keeping the
           # V1-compatibility executable on the bootstrap path, and walks
-          # v1 -> v2 -> v. V3 never enters that chain, so this does not hit the
-          # driver guard that stopped the 0.5.2 tree's make on the Gitea runner
+          # v1 -> v2 -> v. V3 never enters that chain, so this stays clear of the
+          # memory guard that killed this build once before on a smaller runner
           # ("v3 compiler memory usage reached 9994 MiB RSS ... limit: 9984 MiB").
           # Measured here: 187s for the clone plus the build.
           git clone --depth 1 "$V_REPO" "$HOME/vlang"
