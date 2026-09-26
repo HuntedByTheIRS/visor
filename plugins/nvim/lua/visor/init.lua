@@ -169,6 +169,7 @@ function M.info()
     lines[#lines + 1] = 'clients: none'
     return lines
   end
+  lines[#lines + 1] = 'format on save: ' .. (config.options.format_on_save and 'on' or 'off')
   for _, client in ipairs(clients) do
     local reported = client.server_info or {}
     -- A client whose initialize reply is still in flight has no server info
