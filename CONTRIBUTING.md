@@ -35,6 +35,26 @@ described in `testdata/smoke/README.md`: change `client-capabilities.json` or
 `capabilities.golden.json` without the other and the comparison fails, and
 `--update-golden` rewrites the golden when a change to the response was meant.
 
+## The version
+
+`VERSION` holds the version and the binary embeds the file at build time, so it
+is the source of truth. Other files spell the same string out: the issue
+templates ask a reporter for the version they ran, and the smoke golden records
+the `serverInfo` block the server sends back. `tools/update_ver.vsh` carries a
+bump to all of them.
+
+```sh
+v run tools/update_ver.vsh 0.0.3     # write
+v run tools/update_ver.vsh 0.0.3 -n  # print the plan, write nothing
+```
+
+A copy is found by exact match on the previous version, with a boundary rule:
+the match cannot begin or end inside a number, so `0.0.2` is not found in
+`0.0.20`. Numbers that mean something else stay where they are, `0.5.2` for the
+V release this tree needs and `v0.1.0` for the release `ROADMAP.md` plans. The
+tool also sets the `version` in `v.mod`, which declares a version of its own and
+had drifted behind `VERSION`.
+
 ## Layout
 
 `main.v` holds the entry point. Everything else is a module in its own

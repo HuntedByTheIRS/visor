@@ -9,6 +9,7 @@ wrong called out.
 ```sh
 v -o /tmp/visor .        # build
 v run tools/check_warnings.vsh   # warning gate, silent on a clean tree
+v run tools/update_ver.vsh 0.0.3 # version bump, carries the copies with it
 v fmt -verify .          # format gate, exit 0 or fail
 v test .                 # every module's tests, recurses into module dirs
 v test vtool/            # one module
