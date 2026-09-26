@@ -3,9 +3,11 @@ module main
 import lsp
 import os
 
-const version = os.execute('git describe --tags').output.trim_space()
+const em = $embed_file('VERSION').to_string()
 
-const usage_text = 'visor ${version}
+const version = em.trim_space()
+
+const usage_text = 'visor v${version}
 A language server for V.
 
 usage:
