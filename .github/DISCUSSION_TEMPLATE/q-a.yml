@@ -29,7 +29,7 @@ body:
     attributes:
       label: Versions
       description: The output of `v version`, and `visor --version` when visor runs at all.
-      placeholder: V 0.5.2 1b68924, visor 0.0.1
+      placeholder: V 0.5.2 1b68924, visor 0.0.2
     validations:
       required: false
   - type: textarea

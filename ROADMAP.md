@@ -1,11 +1,11 @@
 # Roadmap
 
-The server is pre-release: `--version` answers `visor 0.0.1`, and this file is
-what comes next.
+The server is pre-release: `--version` prints what `VERSION` holds, and this
+file is what comes next.
 
 | Release | State | Carries |
 | --- | --- | --- |
-| 0.0.1 | in the tree | the protocol core: `initialize`, `shutdown`, `exit`, text sync, cancellation, progress |
+| 0.0.x | in the tree | the protocol core: `initialize`, `shutdown`, `exit`, text sync, cancellation, progress |
 | v0.1.0 | in progress | every feature in the README table, on Linux |
 | 0.1.x | planned | visor's own JSON layer, which lowers the compiler floor |
 | v0.2.0 | planned | inline completion, LSP 3.18 |
