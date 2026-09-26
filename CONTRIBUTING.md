@@ -35,6 +35,27 @@ described in `testdata/smoke/README.md`: change `client-capabilities.json` or
 `capabilities.golden.json` without the other and the comparison fails, and
 `--update-golden` rewrites the golden when a change to the response was meant.
 
+## The editor run
+
+`tools/editor_test.vsh` runs the Neovim client in `plugins/nvim` against a real
+server, in a headless editor, and reports one verdict for every editor it is
+handed.
+
+```sh
+v -o /tmp/visor .
+v run tools/editor_test.vsh --bin /tmp/visor
+v run tools/editor_test.vsh --bin /tmp/visor --nvim /opt/nvim-0.11.7/bin/nvim
+```
+
+The floor the client states in `plugins/nvim/README.md` (0.11) is checked here
+rather than trusted, so an older editor fails with that sentence instead of a
+Lua error about an API that is not there. The per-script totals are added up
+because the runner answers 0 or 1, which says a run failed without saying how
+much of the suite ran, and a run that prints no checks at all fails.
+
+CI pins two editors, 0.11.7 and 0.12.5. The token highlighter is started by a
+different call either side of 0.12, and both branches of that check get a run.
+
 ## The version
 
 `VERSION` holds the version and the binary embeds the file at build time, so it
