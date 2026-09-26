@@ -136,11 +136,11 @@ fn checked_version(requested string) !string {
 	core := requested.split('-')[0].split('+')[0]
 	parts := core.split('.')
 	if parts.len != 3 {
-		return error('"${requested}" is not three numbers, as in 0.0.3')
+		return error('"${requested}" is not three numbers, as in 0.0.4')
 	}
 	for part in parts {
 		if part == '' || !part.bytes().all(it.is_digit()) {
-			return error('"${requested}" is not three numbers, as in 0.0.3')
+			return error('"${requested}" is not three numbers, as in 0.0.4')
 		}
 	}
 	return requested
