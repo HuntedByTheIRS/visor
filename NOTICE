@@ -16,3 +16,20 @@ moved.
 grammar in C, because the engine's parser imports `tree_sitter_v.bindings` and
 that package pulls its own C through `#flag` lines. Nothing in it comes from the
 system.
+
+## The V compiler
+
+The compiler is the one piece visor runs rather than carries. It has to be a
+master build, because no published release carries `vlib/json2` and `lsp/`
+imports it. In a directory you do not mind keeping around:
+
+```sh
+git clone --depth 1 https://github.com/vlang/v
+cd v
+make
+```
+
+That leaves `./v` in the clone. Put that directory on `PATH` ahead of any
+release build, and `v version` answers a master build instead of `V 0.5.2`. CI
+clones and builds the same way, and `ROADMAP.md` says why the floor sits there
+and when 0.1.x lowers it.

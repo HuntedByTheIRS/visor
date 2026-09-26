@@ -113,7 +113,7 @@ rather than quietly returning an empty result.
 > out: it is deprecated in favour of `json2` in V's own words, "`json` will be
 > removed soon; use the pure V `json2` module instead". The 0.1.x series gives
 > visor its own JSON layer and lowers this floor again, and `ROADMAP.md` carries
-> the reasoning.
+> the reasoning. `NOTICE` has the route to a master build.
 
 Compiler discovery order, first match wins:
 
@@ -152,6 +152,7 @@ people treat each other in all three places.
 | [`SECURITY.md`](SECURITY.md) | the private reporting route |
 | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | how people treat each other in every space above |
 | [`AGENTS.md`](AGENTS.md) | the rules for automated contributors |
+| [`NOTICE`](NOTICE) | where the ported code came from, and the compiler the tree needs |
 
 ## License
 
