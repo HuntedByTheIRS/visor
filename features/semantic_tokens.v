@@ -1,0 +1,290 @@
+// semantic tokens: what the parse tree says a piece of text is.
+//
+// The walk is syntactic. It types the things a grammar can name on its own:
+// declarations, the types they mention, literals, comments, attributes,
+// keywords and operators. What it does not type is a reference, because telling
+// a call to a function from a field of the same name needs the index rather than
+// the tree, and claiming one would be a guess dressed as an answer. A client
+// with its own syntax highlighting keeps covering those.
+module features
+
+import engine
+
+// token_kinds are the server's token types, by the names LSP gives them. A
+// client that does not know one of these is served its fallback instead, which
+// is decided at the wire, so the names here stay the spec's.
+pub const token_kinds = [
+	'namespace',
+	'type',
+	'struct',
+	'enum',
+	'interface',
+	'typeParameter',
+	'parameter',
+	'variable',
+	'property',
+	'enumMember',
+	'function',
+	'method',
+	'decorator',
+	'keyword',
+	'operator',
+	'string',
+	'number',
+	'comment',
+]!
+
+// modifier_names are the token modifiers this server emits.
+pub const modifier_declaration = 'declaration'
+pub const modifier_readonly = 'readonly'
+pub const modifier_names = [modifier_declaration, modifier_readonly]!
+
+// SemanticToken is one span of text and what it is. The offsets are bytes, the
+// way the parse tree reports them; the wire layer turns them into positions.
+pub struct SemanticToken {
+pub:
+	start_byte int
+	end_byte   int
+	kind       string
+	modifiers  []string
+}
+
+// span_kinds are the node kinds that are one token on their own. A node here is
+// not walked further: a comment and a string both hold words that parse as
+// something else.
+const span_kinds = {
+	'line_comment':               'comment'
+	'block_comment':              'comment'
+	'interpreted_string_literal': 'string'
+	'raw_string_literal':         'string'
+	'c_string_literal':           'string'
+	'rune_literal':               'string'
+	'int_literal':                'number'
+	'float_literal':              'number'
+	'attribute':                  'decorator'
+	'type_reference_expression':  'type'
+	'qualified_type':             'type'
+	'field_name':                 'property'
+}
+
+// declaration_kinds are the nodes that declare a name, and what that name is.
+// The name is the identifier under the node, which is emitted before the node's
+// other children are walked.
+const declaration_kinds = {
+	'module_clause':               'namespace'
+	'import_name':                 'namespace'
+	'struct_declaration':          'struct'
+	'struct_field_declaration':    'property'
+	'enum_declaration':            'enum'
+	'enum_field_definition':       'enumMember'
+	'interface_declaration':       'interface'
+	'interface_method_definition': 'method'
+	'type_declaration':            'type'
+	'parameter_declaration':       'parameter'
+	'variadic_parameter':          'parameter'
+	'receiver':                    'parameter'
+	'generic_parameter':           'typeParameter'
+	'type_parameter_declaration':  'typeParameter'
+	'const_definition':            'variable'
+	'global_var_declaration':      'variable'
+	'var_declaration':             'variable'
+}
+
+// keywords are spelled out because the grammar hands them back as unknown
+// nodes. The text is the only thing that says which one it is.
+const keywords = [
+	'as',
+	'asm',
+	'assert',
+	'atomic',
+	'break',
+	'const',
+	'continue',
+	'defer',
+	'else',
+	'enum',
+	'false',
+	'fn',
+	'for',
+	'go',
+	'goto',
+	'if',
+	'implements',
+	'import',
+	'in',
+	'interface',
+	'is',
+	'lock',
+	'match',
+	'module',
+	'mut',
+	'none',
+	'or',
+	'pub',
+	'return',
+	'rlock',
+	'select',
+	'shared',
+	'spawn',
+	'static',
+	'struct',
+	'thread',
+	'true',
+	'type',
+	'union',
+	'unsafe',
+	'volatile',
+]!
+
+// operators are the ones worth colouring. Punctuation is left out on purpose:
+// brackets, commas and colons are structure rather than meaning.
+const operators = [
+	'!',
+	'!=',
+	'!in',
+	'!is',
+	'%',
+	'%=',
+	'&',
+	'&&',
+	'&=',
+	'&^',
+	'&^=',
+	'*',
+	'*=',
+	'+',
+	'++',
+	'+=',
+	'-',
+	'--',
+	'-=',
+	'/',
+	'/=',
+	':=',
+	'<',
+	'<-',
+	'<<',
+	'<<=',
+	'<=',
+	'=',
+	'==',
+	'>',
+	'>=',
+	'>>',
+	'>>=',
+	'>>>',
+	'>>>=',
+	'?.',
+	'^',
+	'^=',
+	'|',
+	'|=',
+	'||',
+	'~',
+]!
+
+// tokens_for parses a buffer and returns its tokens. A parser is built per call
+// rather than kept: tree-sitter parser setup is cheap next to the parse, and a
+// shared one would need locking once more than one request can be in flight.
+pub fn tokens_for(text string, path string) []SemanticToken {
+	mut parser := engine.new_parser_engine()
+	parsed := parser.parse_source(text, path)
+	tokens := tokens_in(parsed)
+	parser.free()
+	return tokens
+}
+
+// tokens_in walks a parsed file and returns its tokens in document order.
+pub fn tokens_in(file engine.ParsedFile) []SemanticToken {
+	mut out := []SemanticToken{}
+	collect(file.root, file.text, mut out)
+	// A declaration emits its name before the modifiers and keywords that come
+	// before it in the file, so the walk's own order is not the file's. The wire
+	// encoding counts from the previous token, which makes the order a
+	// correctness requirement rather than a preference.
+	out.sort(a.start_byte < b.start_byte)
+	return out
+}
+
+fn collect(node engine.Node, text string, mut out []SemanticToken) {
+	if kind := span_kinds[node.kind] {
+		emit(mut out, node, kind, [])
+		return
+	}
+	if node.kind == 'unknown' {
+		// The grammar reports keywords and operators as unnamed nodes, so the
+		// text is what identifies them. Everything else here is punctuation or
+		// a line ending.
+		spelling := text[node.start_byte..node.end_byte]
+		if spelling in keywords {
+			emit(mut out, node, 'keyword', [])
+		} else if spelling in operators {
+			emit(mut out, node, 'operator', [])
+		}
+		return
+	}
+	if node.kind == 'function_declaration' {
+		// A receiver is what makes a function declaration a method, and the
+		// grammar reports both as function_declaration.
+		kind := if has_child(node, 'receiver') { 'method' } else { 'function' }
+		for name in declared_names(node) {
+			emit(mut out, name, kind, [modifier_declaration])
+		}
+	} else if kind := declaration_kinds[node.kind] {
+		modifiers := if kind == 'variable' && node.kind == 'const_definition' {
+			[modifier_declaration, modifier_readonly]
+		} else {
+			[modifier_declaration]
+		}
+		for name in declared_names(node) {
+			emit(mut out, name, kind, modifiers)
+		}
+	}
+	for child in node.children {
+		collect(child, text, mut out)
+	}
+}
+
+fn emit(mut out []SemanticToken, node engine.Node, kind string, modifiers []string) {
+	out << SemanticToken{
+		start_byte: int(node.start_byte)
+		end_byte:   int(node.end_byte)
+		kind:       kind
+		modifiers:  modifiers
+	}
+}
+
+fn has_child(node engine.Node, kind string) bool {
+	return node.children.any(it.kind == kind)
+}
+
+// declared_names returns the identifiers a declaration node names.
+//
+// Most declarations hold their name as a direct child. The two that do not are
+// the variable forms, where `mut count := 0` puts the name inside the first
+// expression list and only the second one holds the value.
+fn declared_names(node engine.Node) []engine.Node {
+	mut found := []engine.Node{}
+	for child in node.children {
+		if child.kind in ['identifier', 'mutable_identifier'] {
+			found << child
+		}
+	}
+	if found.len > 0 {
+		return found
+	}
+	if node.children.len > 0 && node.children[0].kind == 'expression_list' {
+		collect_identifiers(node.children[0], mut found)
+	}
+	return found
+}
+
+fn collect_identifiers(node engine.Node, mut found []engine.Node) {
+	if node.kind == 'identifier' || node.kind == 'mutable_identifier' {
+		found << node
+		return
+	}
+	for child in node.children {
+		collect_identifiers(child, mut found)
+	}
+}
