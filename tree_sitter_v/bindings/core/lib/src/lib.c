@@ -5,7 +5,6 @@
 #include "./node.c"
 #include "./parser.c"
 #include "./point.c"
-#include "./query.c"
 #include "./stack.c"
 #include "./subtree.c"
 #include "./tree_cursor.c"

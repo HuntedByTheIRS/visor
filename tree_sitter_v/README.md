@@ -24,7 +24,8 @@ Kept for the build:
 Dropped, because visor is a C and V tree: the grammar source in JavaScript and
 its JSON dump, the Rust, JavaScript and lldb bindings, the npm and Nix
 packaging, the editor queries, the grammar's parse fixtures, and the editor and
-pkg-config files that served those bindings.
+pkg-config files that served those bindings. The S-expression query engine went
+the same way, since no code here builds a query.
 
 A grammar change means re-vendoring from tree-sitter-v: nothing here generates
 `src/parser.c` any more.
