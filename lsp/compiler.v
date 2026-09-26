@@ -2,8 +2,9 @@ module lsp
 
 import vtool
 
-// The compiler is resolved once, before the loop reads a frame, and what was
-// learned about it is kept on the server.
+// probe_compiler resolves the V binary and probes what it can do. It runs once,
+// before the loop reads a frame, and what was learned about it is kept on the
+// server.
 //
 // Resolving it lazily would be worse than a slower startup. A feature that
 // discovers a missing compiler halfway through a request has already answered
