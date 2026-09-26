@@ -200,10 +200,10 @@ fn test_configuration_offers_are_read_from_the_client_side() {
 fn test_every_decision_is_written_down() {
 	notes := negotiate(client_for(bare_client), none).notes
 	// one line per capability considered, so a support question has an answer
-	// without re-reading the negotiation. Five is what a client that offered
-	// nothing gets: sync, formatting, workspace folders, diagnostics and
-	// progress.
-	assert notes.len == 5
+	// without re-reading the negotiation. Six is what a client that offered
+	// nothing gets: sync, formatting, semantic tokens, workspace folders,
+	// diagnostics and progress.
+	assert notes.len == 6
 	mut sync_note := ''
 	for note in notes {
 		if note.starts_with('textDocumentSync:') {
@@ -229,6 +229,51 @@ fn test_formatting_is_not_registered_when_the_compiler_cannot_do_it() {
 	assert 'documentFormattingProvider' !in caps
 	notes := negotiate(client_for(formatting_client), compiler_that_cannot_format()).notes
 	assert notes.any(it.contains('the compiler cannot format'))
+}
+
+// A client that offers semantic tokens and asks for whole-document ones, which
+// is the shape Neovim sends.
+const client_with_tokens = '{"textDocument":{"semanticTokens":' +
+	'{"requests":{"range":true,"full":{"delta":true}},"tokenTypes":["type","keyword","comment"],' +
+	'"tokenModifiers":["declaration"]}}}'
+
+// The same client, but it only wants ranges.
+const client_with_range_tokens = '{"textDocument":{"semanticTokens":' +
+	'{"requests":{"range":true,"full":false},"tokenTypes":["type","keyword","comment"],' +
+	'"tokenModifiers":["declaration"]}}}'
+
+fn test_semantic_tokens_are_registered_when_the_client_offers_types_the_server_emits() {
+	caps := caps_from(client_with_tokens)
+	assert 'semanticTokensProvider' in caps
+	provider := as_object(caps['semanticTokensProvider'] or {
+		panic('the provider is not there')
+	}) or { panic('the provider is not an object') }
+	legend := as_object(provider['legend'] or { panic('no legend') }) or {
+		panic('the legend is not an object')
+	}
+	// only the three types the client named, in the server's own order
+	types := as_array(legend['tokenTypes'] or { panic('no tokenTypes') }) or {
+		panic('tokenTypes is not an array')
+	}
+	assert types.len == 3
+	assert types[0].str() == 'type'
+	assert types[1].str() == 'keyword'
+	assert types[2].str() == 'comment'
+}
+
+fn test_semantic_tokens_are_not_registered_without_a_type_the_server_emits() {
+	caps := caps_from('{"textDocument":{"semanticTokens":{"tokenTypes":[],"tokenModifiers":[]}}}')
+	assert 'semanticTokensProvider' !in caps
+	notes := negotiate(client_for('{"textDocument":{"semanticTokens":{"tokenTypes":[]}}}'),
+		none).notes
+	assert notes.any(it.contains('no token type this server emits'))
+}
+
+fn test_semantic_tokens_are_not_registered_for_a_client_that_only_wants_ranges() {
+	caps := caps_from(client_with_range_tokens)
+	assert 'semanticTokensProvider' !in caps
+	notes := negotiate(client_for(client_with_range_tokens), none).notes
+	assert notes.any(it.contains('did not ask for whole-document tokens'))
 }
 
 fn test_a_session_with_no_compiler_says_so_in_the_notes() {

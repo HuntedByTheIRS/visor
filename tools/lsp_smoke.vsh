@@ -279,6 +279,56 @@ fn pretty(value json2.Any, depth int) string {
 	return json2.encode(value)
 }
 
+// as_map and as_list read a decoded payload without the casts needing a guard,
+// which keeps the assertions below about the protocol rather than about V's
+// types.
+fn as_map(value json2.Any) ?map[string]json2.Any {
+	if value is map[string]json2.Any {
+		return value as map[string]json2.Any
+	}
+	return none
+}
+
+fn as_list(value json2.Any) ?[]json2.Any {
+	if value is []json2.Any {
+		return value as []json2.Any
+	}
+	return none
+}
+
+fn no_map() map[string]json2.Any {
+	return map[string]json2.Any{}
+}
+
+fn no_list() []json2.Any {
+	return []json2.Any{}
+}
+
+// legend_types reads the token types the server advertised out of the
+// initialize response, so the indices in a token answer can be checked by name
+// rather than by number.
+fn legend_types(response json2.Any) []string {
+	root := as_map(response) or { return no_list_strings() }
+	result := as_map(root['result'] or { json2.Any(no_map()) }) or { return no_list_strings() }
+	caps := as_map(result['capabilities'] or { json2.Any(no_map()) }) or { return no_list_strings() }
+	provider := as_map(caps['semanticTokensProvider'] or { json2.Any(no_map()) }) or {
+		return no_list_strings()
+	}
+	legend := as_map(provider['legend'] or { json2.Any(no_map()) }) or { return no_list_strings() }
+	listed := as_list(legend['tokenTypes'] or { json2.Any(no_list()) }) or {
+		return no_list_strings()
+	}
+	mut out := []string{cap: listed.len}
+	for item in listed {
+		out << item.str()
+	}
+	return out
+}
+
+fn no_list_strings() []string {
+	return []string{}
+}
+
 fn open_notification(uri string, text string) string {
 	mut document := map[string]json2.Any{}
 	document['uri'] = json2.Any(uri)
@@ -385,8 +435,36 @@ fn main() {
 			&& reply.ecode == -32601, 'error code ${reply.ecode}')
 	}
 
-	runner.send('{"jsonrpc":"2.0","id":5,"method":"shutdown"}')
-	if reply := runner.expect_reply('shutdown answers', 5, wait_for_reply_ms) {
+	// Semantic tokens come from the buffer's parse tree, so this request proves
+	// the walk, the advertised legend and the encoding agree across a real
+	// pipe. The type is checked by name against the legend the server sent,
+	// which is the part an index alone would not show.
+	tokens := '{"jsonrpc":"2.0","id":5,"method":"textDocument/semanticTokens/full",' +
+		'"params":{"textDocument":{"uri":"${root_uri}"}}}'
+	runner.send(tokens)
+	if reply := runner.expect_reply('semantic tokens are answered', 5, wait_for_reply_ms) {
+		types := legend_types(response)
+		keyword_index := types.index('keyword')
+		runner.record('the token answer is not an error', !reply.err, reply.etext)
+		result := as_map(reply.result) or { no_map() }
+		data := as_list(result['data'] or { json2.Any(no_list()) }) or { no_list() }
+		integers := data.len
+		mut first_length := -1
+		mut first_type := -1
+		if data.len >= 4 {
+			first_length = data[2].int()
+			first_type = data[3].int()
+		}
+		runner.record('the token data is whole five-integer tuples', integers > 0
+			&& integers % 5 == 0, '${integers} integers')
+		// the fixture opens with `module main`, and `module` is six characters
+		runner.record('the first token is the `module` keyword', first_length == 6
+			&& first_type == keyword_index,
+			'length ${first_length}, type ${first_type}, keyword sits at ${keyword_index}')
+	}
+
+	runner.send('{"jsonrpc":"2.0","id":6,"method":"shutdown"}')
+	if reply := runner.expect_reply('shutdown answers', 6, wait_for_reply_ms) {
 		runner.record('shutdown result is null', reply.result is json2.Null, 'result: ${reply.result}')
 	}
 	runner.send('{"jsonrpc":"2.0","method":"exit"}')

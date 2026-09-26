@@ -96,6 +96,9 @@ pub struct Negotiation {
 pub:
 	capabilities map[string]json2.Any
 	notes        []string
+	// legend is the token legend the capabilities were built around, which the
+	// handlers have to use for the same indices to mean the same thing.
+	legend SemanticLegend
 }
 
 // negotiate builds the server capabilities from the client's list and from what
@@ -108,6 +111,7 @@ pub:
 pub fn negotiate(client ClientCapabilities, compiler ?vtool.CapabilityReport) Negotiation {
 	mut caps := map[string]json2.Any{}
 	mut notes := []string{}
+	legend := new_semantic_legend(client)
 
 	if client.advertises(cap_synchronization) {
 		// the client said it can send ranged edits, so ask for them.
@@ -132,6 +136,22 @@ pub fn negotiate(client ClientCapabilities, compiler ?vtool.CapabilityReport) Ne
 		}
 	} else {
 		notes << 'documentFormattingProvider: not registered, the client did not offer ${cap_formatting}'
+	}
+
+	if client.advertises(cap_semantic_tokens) {
+		// Both halves have to line up: a legend the client can draw, and a
+		// request shape it will send. Anything else is a provider that answers
+		// into the void.
+		if !legend.enabled() {
+			notes << 'semanticTokensProvider: not registered, the client offered ${cap_semantic_tokens} but no token type this server emits'
+		} else if !full_tokens_wanted(client) {
+			notes << 'semanticTokensProvider: not registered, the client did not ask for whole-document tokens'
+		} else {
+			caps['semanticTokensProvider'] = semantic_tokens_provider(legend)
+			notes << 'semanticTokensProvider: registered with ${legend.token_types.len} token types and ${legend.token_modifiers.len} token modifiers, whole document only'
+		}
+	} else {
+		notes << 'semanticTokensProvider: not registered, the client did not offer ${cap_semantic_tokens}'
 	}
 
 	if client.flag(cap_workspace_folders) {
@@ -180,6 +200,7 @@ pub fn negotiate(client ClientCapabilities, compiler ?vtool.CapabilityReport) Ne
 	return Negotiation{
 		capabilities: caps
 		notes:        notes
+		legend:       legend
 	}
 }
 
@@ -242,5 +263,22 @@ fn diagnostic_provider() json2.Any {
 	// module root, and no workspace diagnostics for the same reason.
 	provider['interFileDependencies'] = json2.Any(false)
 	provider['workspaceDiagnostics'] = json2.Any(false)
+	return json2.Any(provider)
+}
+
+// semantic_tokens_provider advertises the legend the session will use.
+//
+// Range requests are refused rather than left out of the answer: the walk types
+// a whole buffer, and slicing it per request would be a different feature with
+// different bugs. A client that asked only for ranges gets no provider at all,
+// because there is nothing honest to serve it.
+fn semantic_tokens_provider(legend SemanticLegend) json2.Any {
+	mut legend_object := map[string]json2.Any{}
+	legend_object['tokenTypes'] = json2.Any(legend.token_types.map(json2.Any(it)))
+	legend_object['tokenModifiers'] = json2.Any(legend.token_modifiers.map(json2.Any(it)))
+	mut provider := map[string]json2.Any{}
+	provider['legend'] = json2.Any(legend_object)
+	provider['full'] = json2.Any(true)
+	provider['range'] = json2.Any(false)
 	return json2.Any(provider)
 }

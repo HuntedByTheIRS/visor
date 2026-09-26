@@ -10,6 +10,36 @@
       },
       "documentFormattingProvider": true,
       "positionEncoding": "utf-16",
+      "semanticTokensProvider": {
+        "full": true,
+        "legend": {
+          "tokenModifiers": [
+            "declaration",
+            "readonly"
+          ],
+          "tokenTypes": [
+            "namespace",
+            "type",
+            "struct",
+            "enum",
+            "interface",
+            "typeParameter",
+            "parameter",
+            "variable",
+            "property",
+            "enumMember",
+            "function",
+            "method",
+            "decorator",
+            "keyword",
+            "operator",
+            "string",
+            "number",
+            "comment"
+          ]
+        },
+        "range": false
+      },
       "textDocumentSync": {
         "change": 2,
         "openClose": true,
