@@ -3,10 +3,11 @@
 The editor half of visor. It finds the server, attaches a client to a V buffer,
 and leaves the answers to the server.
 
-It needs Neovim 0.10 or later and a `visor` binary, either on `PATH` or named in
-`setup()`. There is no ftdetect file here and no syntax file: Neovim already
-maps `.v` to the `v` filetype by itself, which the test checks rather than
-assumes.
+It needs Neovim 0.11 or later and a `visor` binary, either on `PATH` or named in
+`setup()`. The 0.11 floor is `vim.lsp.get_clients` and the filter that reaches a
+client whose initialize reply is still in flight. There is no ftdetect file here
+and no syntax file: Neovim already maps `.v` to the `v` filetype by itself,
+which the test checks rather than assumes.
 
 ## Install
 
