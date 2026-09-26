@@ -7,6 +7,7 @@ pub struct UnsafeExpression {
 	PsiElementImpl
 }
 
+// block returns the block the unsafe expression wraps, or none when it has none.
 pub fn (n UnsafeExpression) block() ?&Block {
 	block := n.find_child_by_type(.block)?
 	if block is Block {

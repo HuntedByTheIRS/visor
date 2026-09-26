@@ -12,11 +12,13 @@ pub mut:
 	data []u8
 }
 
+// write_u8 appends one byte to the buffer.
 @[inline]
 pub fn (mut s Serializer) write_u8(value u8) {
 	s.data << value
 }
 
+// write_i64 appends the value as eight little-endian bytes.
 pub fn (mut s Serializer) write_i64(value i64) {
 	unsigned := u64(value)
 	s.data << u8(unsigned)
@@ -29,11 +31,13 @@ pub fn (mut s Serializer) write_i64(value i64) {
 	s.data << u8(unsigned >> 56)
 }
 
+// write_int appends the value as eight little-endian bytes.
 @[inline]
 pub fn (mut s Serializer) write_int(value int) {
 	s.write_i64(i64(value))
 }
 
+// write_string appends the length as an int followed by the string's bytes.
 pub fn (mut s Serializer) write_string(value string) {
 	s.write_int(value.len)
 	s.data << value.bytes()
@@ -45,18 +49,21 @@ mut:
 	pos  int
 }
 
+// new_deserializer returns a reader positioned at the start of data.
 pub fn new_deserializer(data []u8) Deserializer {
 	return Deserializer{
 		data: data
 	}
 }
 
+// read_u8 returns the next byte and advances past it, yielding zero once the data runs out.
 pub fn (mut d Deserializer) read_u8() u8 {
 	value := d.data[d.pos] or { return 0 }
 	d.pos++
 	return value
 }
 
+// read_i64 returns the next eight bytes as an integer and advances past them.
 pub fn (mut d Deserializer) read_i64() i64 {
 	mut unsigned := u64(0)
 	for shift in 0 .. 8 {
@@ -66,11 +73,13 @@ pub fn (mut d Deserializer) read_i64() i64 {
 	return i64(unsigned)
 }
 
+// read_int returns the next eight bytes as an int and advances past them.
 @[inline]
 pub fn (mut d Deserializer) read_int() int {
 	return int(d.read_i64())
 }
 
+// read_string returns the next length-prefixed string and advances past it.
 pub fn (mut d Deserializer) read_string() string {
 	length := d.read_int()
 	if length <= 0 || d.pos + length > d.data.len {

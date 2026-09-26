@@ -14,6 +14,8 @@ pub:
 	stubs_list ?&StubList
 }
 
+// new_psi_node builds an element over a tree-sitter node, optionally tied to
+// the file the node was parsed from.
 pub fn new_psi_node(containing_file ?&PsiFile, node AstNode) PsiElementImpl {
 	return PsiElementImpl{
 		node:            node
@@ -47,27 +49,39 @@ fn (n &PsiElementImpl) is_valid_tree() bool {
 	return !isnil(file.tree)
 }
 
+// stub_id returns the element's slot in its stub list, or non_stubbed_element
+// when the element is not stub-based.
 pub fn (n &PsiElementImpl) stub_id() StubId {
 	return n.stub_id
 }
 
+// stub_based reports whether the element was built from a stub rather than a
+// tree-sitter node.
 pub fn (n &PsiElementImpl) stub_based() bool {
 	return n.stubs_list != none
 }
 
+// get_stub returns the stub backing the element, or none when the element is
+// not stub-based.
 pub fn (n &PsiElementImpl) get_stub() ?&StubBase {
 	list := n.stub_list()?
 	return list.get_stub(n.stub_id)
 }
 
+// stub_list returns the stub list the element belongs to, or none when it is
+// not stub-based.
 pub fn (n &PsiElementImpl) stub_list() ?&StubList {
 	return n.stubs_list
 }
 
+// node returns the tree-sitter node behind the element. A stub-based element
+// answers with a zero node.
 pub fn (n &PsiElementImpl) node() AstNode {
 	return n.node
 }
 
+// element_type returns the element's node type. A stub-based element reports
+// the type its stub carries, and one with no live tree reports .unknown.
 pub fn (n &PsiElementImpl) element_type() bindings.NodeType {
 	if stub := n.get_stub() {
 		return stub.element_type()
@@ -80,6 +94,8 @@ pub fn (n &PsiElementImpl) element_type() bindings.NodeType {
 	return n.node.type_name
 }
 
+// containing_file returns the file the element was parsed from. A stub-based
+// element answers with a file rebuilt around its stub list.
 pub fn (n &PsiElementImpl) containing_file() ?&PsiFile {
 	if list := n.stubs_list {
 		return new_stub_psi_file(list.path, list)
@@ -88,6 +104,8 @@ pub fn (n &PsiElementImpl) containing_file() ?&PsiFile {
 	return n.containing_file
 }
 
+// is_equal reports whether other is the same element. Elements match when
+// their type and text range agree and the text under that range is the same.
 pub fn (n &PsiElementImpl) is_equal(other PsiElement) bool {
 	if n.element_type() != other.element_type() {
 		return false
@@ -100,14 +118,18 @@ pub fn (n &PsiElementImpl) is_equal(other PsiElement) bool {
 	return n.get_text() == other.get_text()
 }
 
+// accept passes the element to the visitor.
 pub fn (n &PsiElementImpl) accept(visitor PsiElementVisitor) {
 	visitor.visit_element(n)
 }
 
+// accept_mut passes the element to a visitor whose own state may change.
 pub fn (n &PsiElementImpl) accept_mut(mut visitor MutablePsiElementVisitor) {
 	visitor.visit_element(n)
 }
 
+// find_element_at returns the deepest element covering offset, counted from
+// the start of this element.
 pub fn (n &PsiElementImpl) find_element_at(offset u32) ?PsiElement {
 	if !n.is_valid_tree() {
 		return none
@@ -119,6 +141,8 @@ pub fn (n &PsiElementImpl) find_element_at(offset u32) ?PsiElement {
 	return create_element(el, n.containing_file)
 }
 
+// find_reference_at returns the reference covering offset. An identifier at
+// the offset is reported as the reference it sits in.
 pub fn (n &PsiElementImpl) find_reference_at(offset u32) ?PsiElement {
 	element := n.find_element_at(offset)?
 	if element is Identifier {
@@ -133,6 +157,8 @@ pub fn (n &PsiElementImpl) find_reference_at(offset u32) ?PsiElement {
 	return none
 }
 
+// parent returns the element that contains this one, or none at the root.
+// A stub-based element answers from its stub's parent.
 pub fn (n &PsiElementImpl) parent() ?PsiElement {
 	if stub := n.get_stub() {
 		if isnil(stub) {
@@ -162,6 +188,8 @@ pub fn (n &PsiElementImpl) parent() ?PsiElement {
 	return create_element(parent, n.containing_file)
 }
 
+// parent_nth walks depth levels up the tree, returning none before it gets
+// that far.
 pub fn (n &PsiElementImpl) parent_nth(depth int) ?PsiElement {
 	if !n.is_valid_tree() {
 		return none
@@ -171,6 +199,7 @@ pub fn (n &PsiElementImpl) parent_nth(depth int) ?PsiElement {
 	return create_element(parent, n.containing_file)
 }
 
+// parent_of_type returns the nearest ancestor with the given node type.
 pub fn (n &PsiElementImpl) parent_of_type(typ bindings.NodeType) ?PsiElement {
 	mut res := PsiElement(n)
 	for {
@@ -183,6 +212,7 @@ pub fn (n &PsiElementImpl) parent_of_type(typ bindings.NodeType) ?PsiElement {
 	return none
 }
 
+// parent_of_any_type returns the nearest ancestor whose type is one of types.
 pub fn (n &PsiElementImpl) parent_of_any_type(types ...bindings.NodeType) ?PsiElement {
 	mut res := PsiElement(n)
 	for {
@@ -196,6 +226,7 @@ pub fn (n &PsiElementImpl) parent_of_any_type(types ...bindings.NodeType) ?PsiEl
 	return none
 }
 
+// inside reports whether any ancestor of the element has the given type.
 pub fn (n &PsiElementImpl) inside(typ bindings.NodeType) bool {
 	mut res := PsiElement(n)
 	for {
@@ -208,6 +239,8 @@ pub fn (n &PsiElementImpl) inside(typ bindings.NodeType) bool {
 	return false
 }
 
+// is_parent_of reports whether element sits anywhere below the receiver.
+// Elements from different stub lists are never related.
 pub fn (n &PsiElementImpl) is_parent_of(element PsiElement) bool {
 	if stub := n.get_stub() {
 		if element_stub := element.get_stub() {
@@ -229,6 +262,8 @@ pub fn (n &PsiElementImpl) is_parent_of(element PsiElement) bool {
 	return false
 }
 
+// sibling_of_type_backward returns the nearest earlier sibling with the
+// given type.
 pub fn (n &PsiElementImpl) sibling_of_type_backward(typ bindings.NodeType) ?PsiElement {
 	mut res := PsiElement(n)
 	for {
@@ -241,6 +276,8 @@ pub fn (n &PsiElementImpl) sibling_of_type_backward(typ bindings.NodeType) ?PsiE
 	return none
 }
 
+// parent_of_type_or_self returns the nearest ancestor with the given type, or
+// the element itself when its type already matches.
 pub fn (n &PsiElementImpl) parent_of_type_or_self(typ bindings.NodeType) ?PsiElement {
 	if !n.is_valid_tree() {
 		return none
@@ -264,6 +301,8 @@ pub fn (n &PsiElementImpl) parent_of_type_or_self(typ bindings.NodeType) ?PsiEle
 	return none
 }
 
+// children returns every child element in order. A stub-based element answers
+// from its stub's children.
 pub fn (n &PsiElementImpl) children() []PsiElement {
 	if stub := n.get_stub() {
 		children := stub.children_stubs()
@@ -283,6 +322,7 @@ pub fn (n &PsiElementImpl) children() []PsiElement {
 	return result
 }
 
+// named_children returns every child element whose type is not .unknown.
 pub fn (n &PsiElementImpl) named_children() []PsiElement {
 	if !n.is_valid_tree() {
 		return []
@@ -304,6 +344,7 @@ pub fn (n &PsiElementImpl) named_children() []PsiElement {
 	return result
 }
 
+// first_child returns the first child element, or none when there are none.
 pub fn (n &PsiElementImpl) first_child() ?PsiElement {
 	if !n.is_valid_tree() {
 		return none
@@ -313,6 +354,8 @@ pub fn (n &PsiElementImpl) first_child() ?PsiElement {
 	return create_element(child, n.containing_file)
 }
 
+// first_child_or_stub returns the first child, taken from the stub when the
+// element is stub-based.
 pub fn (n &PsiElementImpl) first_child_or_stub() ?PsiElement {
 	if stub := n.get_stub() {
 		child := stub.first_child()?
@@ -327,6 +370,7 @@ pub fn (n &PsiElementImpl) first_child_or_stub() ?PsiElement {
 	return create_element(child, n.containing_file)
 }
 
+// last_child returns the last child element, or none when there are none.
 pub fn (n &PsiElementImpl) last_child() ?PsiElement {
 	if !n.is_valid_tree() {
 		return none
@@ -335,6 +379,8 @@ pub fn (n &PsiElementImpl) last_child() ?PsiElement {
 	return create_element(child, n.containing_file)
 }
 
+// last_child_or_stub returns the last child, taken from the stub when the
+// element is stub-based.
 pub fn (n &PsiElementImpl) last_child_or_stub() ?PsiElement {
 	if stub := n.get_stub() {
 		child := stub.last_child()?
@@ -349,6 +395,8 @@ pub fn (n &PsiElementImpl) last_child_or_stub() ?PsiElement {
 	return create_element(child, n.containing_file)
 }
 
+// next_sibling returns the element's next sibling, or none at the end of the
+// parent's children.
 pub fn (n &PsiElementImpl) next_sibling() ?PsiElement {
 	if !n.is_valid_tree() {
 		return none
@@ -358,6 +406,8 @@ pub fn (n &PsiElementImpl) next_sibling() ?PsiElement {
 	return create_element(sibling, n.containing_file)
 }
 
+// next_sibling_or_stub returns the next sibling, taken from the stub when the
+// element is stub-based.
 pub fn (n &PsiElementImpl) next_sibling_or_stub() ?PsiElement {
 	if stub := n.get_stub() {
 		sibling := stub.next_sibling()?
@@ -374,6 +424,8 @@ pub fn (n &PsiElementImpl) next_sibling_or_stub() ?PsiElement {
 	return n.next_sibling()
 }
 
+// prev_sibling returns the element's previous sibling, or none at the start
+// of the parent's children.
 pub fn (n &PsiElementImpl) prev_sibling() ?PsiElement {
 	if !n.is_valid_tree() {
 		return none
@@ -383,6 +435,8 @@ pub fn (n &PsiElementImpl) prev_sibling() ?PsiElement {
 	return create_element(sibling, n.containing_file)
 }
 
+// prev_sibling_of_type returns the nearest earlier sibling with the given
+// type.
 pub fn (n &PsiElementImpl) prev_sibling_of_type(typ bindings.NodeType) ?PsiElement {
 	mut res := PsiElement(n)
 	for {
@@ -395,6 +449,8 @@ pub fn (n &PsiElementImpl) prev_sibling_of_type(typ bindings.NodeType) ?PsiEleme
 	return none
 }
 
+// prev_sibling_or_stub returns the previous sibling, taken from the stub when
+// the element is stub-based.
 pub fn (n &PsiElementImpl) prev_sibling_or_stub() ?PsiElement {
 	if stub := n.get_stub() {
 		sibling := stub.prev_sibling()?
@@ -407,6 +463,7 @@ pub fn (n &PsiElementImpl) prev_sibling_or_stub() ?PsiElement {
 	return n.prev_sibling()
 }
 
+// find_child_by_type returns the first child element with the given type.
 pub fn (n &PsiElementImpl) find_child_by_type(typ bindings.NodeType) ?PsiElement {
 	if !n.is_valid_tree() {
 		return none
@@ -416,6 +473,7 @@ pub fn (n &PsiElementImpl) find_child_by_type(typ bindings.NodeType) ?PsiElement
 	return create_element(ast_node, n.containing_file)
 }
 
+// has_child_of_type reports whether any child carries the given type.
 pub fn (n &PsiElementImpl) has_child_of_type(typ bindings.NodeType) bool {
 	if stub := n.get_stub() {
 		return stub.has_child_of_type(node_type_to_stub_type(typ))
@@ -432,6 +490,8 @@ pub fn (n &PsiElementImpl) has_child_of_type(typ bindings.NodeType) bool {
 	return false
 }
 
+// find_child_by_type_or_stub returns the first child with the given type,
+// taken from the stub when the element is stub-based.
 pub fn (n &PsiElementImpl) find_child_by_type_or_stub(typ bindings.NodeType) ?PsiElement {
 	if stub := n.get_stub() {
 		child := stub.get_child_by_type(node_type_to_stub_type(typ))?
@@ -446,6 +506,7 @@ pub fn (n &PsiElementImpl) find_child_by_type_or_stub(typ bindings.NodeType) ?Ps
 	return create_element(ast_node, n.containing_file)
 }
 
+// find_child_by_name returns the child the grammar files under a field name.
 pub fn (n &PsiElementImpl) find_child_by_name(name string) ?PsiElement {
 	if !n.is_valid_tree() {
 		return none
@@ -455,6 +516,7 @@ pub fn (n &PsiElementImpl) find_child_by_name(name string) ?PsiElement {
 	return create_element(ast_node, n.containing_file)
 }
 
+// find_children_by_type returns every child element with the given type.
 pub fn (n &PsiElementImpl) find_children_by_type(typ bindings.NodeType) []PsiElement {
 	if !n.is_valid_tree() {
 		return []
@@ -471,6 +533,8 @@ pub fn (n &PsiElementImpl) find_children_by_type(typ bindings.NodeType) []PsiEle
 	return result
 }
 
+// find_children_by_type_or_stub returns every child with the given type,
+// taken from the stub when the element is stub-based.
 pub fn (n &PsiElementImpl) find_children_by_type_or_stub(typ bindings.NodeType) []PsiElement {
 	if stub := n.get_stub() {
 		return stub.get_children_by_type(node_type_to_stub_type(typ)).get_psi()
@@ -491,6 +555,7 @@ pub fn (n &PsiElementImpl) find_children_by_type_or_stub(typ bindings.NodeType) 
 	return result
 }
 
+// find_last_child_by_type returns the last child element with the given type.
 pub fn (n &PsiElementImpl) find_last_child_by_type(typ bindings.NodeType) ?PsiElement {
 	if !n.is_valid_tree() {
 		return none
@@ -500,6 +565,8 @@ pub fn (n &PsiElementImpl) find_last_child_by_type(typ bindings.NodeType) ?PsiEl
 	return create_element(ast_node, n.containing_file)
 }
 
+// get_text returns the source text the element covers, or an empty string
+// when there is no text to read.
 pub fn (n &PsiElementImpl) get_text() string {
 	if stub := n.get_stub() {
 		return stub.text
@@ -516,6 +583,8 @@ pub fn (n &PsiElementImpl) get_text() string {
 	return ''
 }
 
+// text_matches reports whether the element's text is value, without building
+// the text first.
 pub fn (n &PsiElementImpl) text_matches(value string) bool {
 	if stub := n.get_stub() {
 		return stub.text == value
@@ -532,6 +601,7 @@ pub fn (n &PsiElementImpl) text_matches(value string) bool {
 	return false
 }
 
+// text_range returns where the element starts and ends in the source.
 pub fn (n &PsiElementImpl) text_range() TextRange {
 	if stub := n.get_stub() {
 		return stub.text_range
@@ -549,6 +619,8 @@ pub fn (n &PsiElementImpl) text_range() TextRange {
 	}
 }
 
+// text_length returns how many bytes the element's text is. A stub-based
+// element reports the width of its recorded range instead.
 pub fn (n &PsiElementImpl) text_length() int {
 	if stub := n.get_stub() {
 		range := stub.text_range

@@ -11,6 +11,7 @@ mut:
 	implicit_specialization_types_map map[string]types.Type
 }
 
+// reify_generic_ts records the concrete type behind each generic parameter, pairing param_types with arg_types in order.
 pub fn (mut g GenericTypeReifier) reify_generic_ts(param_types []types.Type, arg_types []types.Type) {
 	for i in 0 .. math.min(param_types.len, arg_types.len) {
 		g.reify_generic_t(param_types[i], arg_types[i])

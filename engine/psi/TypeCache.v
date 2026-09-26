@@ -16,6 +16,7 @@ mut:
 	data  map[string]types.Type
 }
 
+// get returns the cached type for an element, or none when it has not been inferred yet.
 pub fn (t &TypeCache) get(element PsiElement) ?types.Type {
 	t.mutex.@rlock()
 	defer {
@@ -26,6 +27,7 @@ pub fn (t &TypeCache) get(element PsiElement) ?types.Type {
 	return t.data[fingerprint] or { return none }
 }
 
+// put stores the type for an element and returns it, so the caller can use the result inline.
 pub fn (mut t TypeCache) put(element PsiElement, typ types.Type) types.Type {
 	t.mutex.@lock()
 	defer {
@@ -37,6 +39,7 @@ pub fn (mut t TypeCache) put(element PsiElement, typ types.Type) types.Type {
 	return typ
 }
 
+// clear empties the cache.
 pub fn (mut t TypeCache) clear() {
 	t.mutex.@lock()
 	defer {

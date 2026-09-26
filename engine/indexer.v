@@ -21,10 +21,13 @@ pub mut:
 	no_save bool
 }
 
+// new_indexer returns an indexer with no roots.
 pub fn new_indexer() &Indexer {
 	return &Indexer{}
 }
 
+// set_no_save controls whether indexes are written to disk: true keeps them in memory
+// only, on the indexer and on every root it holds.
 pub fn (mut i Indexer) set_no_save(value bool) {
 	i.no_save = value
 	for mut root in i.roots {
@@ -32,10 +35,12 @@ pub fn (mut i Indexer) set_no_save(value bool) {
 	}
 }
 
+// count_roots returns how many indexing roots the indexer holds.
 pub fn (i Indexer) count_roots() int {
 	return i.roots.len
 }
 
+// add_indexing_root adds a root to index, together with the directory its cache is stored in.
 pub fn (mut i Indexer) add_indexing_root(root string, kind index.IndexingRootKind, cache_dir string) {
 	loglib.with_fields({
 		'root': root
@@ -43,6 +48,8 @@ pub fn (mut i Indexer) add_indexing_root(root string, kind index.IndexingRootKin
 	i.roots << index.new_indexing_root(root, kind, cache_dir)
 }
 
+// index indexes every root, calling on_start with each root as its turn comes, and reports
+// whether every index was ready or at least one was loaded from the cache.
 pub fn (mut i Indexer) index(on_start fn (root index.IndexingRoot, index int)) IndexingRootsStatus {
 	now := time.now()
 	loglib.info('Indexing ${i.roots.len} roots')
@@ -68,6 +75,7 @@ pub fn (mut i Indexer) index(on_start fn (root index.IndexingRoot, index int)) I
 	}
 }
 
+// ensure_indexed brings every root up to date after an index was taken from the cache.
 pub fn (mut i Indexer) ensure_indexed() {
 	now := time.now()
 	loglib.info('Ensure indexed of ${i.roots.len} roots')
@@ -79,6 +87,7 @@ pub fn (mut i Indexer) ensure_indexed() {
 	loglib.with_duration(time.since(now)).info('Ensure indexed of all roots')
 }
 
+// save_indexes writes every root's index to disk, unless saving was turned off.
 pub fn (mut i Indexer) save_indexes() ! {
 	if i.no_save {
 		return
@@ -95,12 +104,14 @@ pub fn (mut i Indexer) save_indexes() ! {
 	}
 }
 
+// mark_as_dirty tells the roots that a file changed and hands them its new content.
 pub fn (mut i Indexer) mark_as_dirty(filepath string, new_content string) ! {
 	for mut indexing_root in i.roots {
 		indexing_root.mark_as_dirty(filepath, new_content)!
 	}
 }
 
+// add_file reads a file and adds it to the root that contains it, or none when no root does.
 pub fn (mut i Indexer) add_file(path string) ?index.FileIndex {
 	content := os.read_file(path) or {
 		loglib.with_fields({
@@ -126,6 +137,7 @@ pub fn (mut i Indexer) add_file(path string) ?index.FileIndex {
 	return none
 }
 
+// rename_file rewrites the index entry for a file that moved, or none when no root contains it.
 pub fn (mut i Indexer) rename_file(old_path string, new_path string) ?index.FileIndex {
 	for mut root in i.roots {
 		if root.contains(old_path) {
@@ -144,6 +156,7 @@ pub fn (mut i Indexer) rename_file(old_path string, new_path string) ?index.File
 	return none
 }
 
+// remove_file drops a file from the root that contains it, or none when no root does.
 pub fn (mut i Indexer) remove_file(path string) ?index.FileIndex {
 	for mut root in i.roots {
 		if root.contains(path) {

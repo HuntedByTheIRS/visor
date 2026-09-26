@@ -28,6 +28,7 @@ pub fn get_it_call(element PsiElement) ?&CallExpression {
 	return none
 }
 
+// is_array_method_call reports whether the called method's name is one of the given names.
 pub fn is_array_method_call(element CallExpression, names ...string) bool {
 	ref_expression := element.ref_expression() or { return false }
 	last_child := (ref_expression as PsiElement).last_child() or { return false }

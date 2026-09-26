@@ -7,6 +7,7 @@ pub struct VisibilityModifiers {
 	PsiElementImpl
 }
 
+// is_public reports whether the modifiers say pub.
 pub fn (n VisibilityModifiers) is_public() bool {
 	return n.get_text() == 'pub'
 }

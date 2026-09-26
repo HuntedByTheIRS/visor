@@ -13,6 +13,7 @@ pub struct ReferenceImpl {
 	for_attributes bool
 }
 
+// new_reference creates a reference to element, resolving types when for_types is set.
 pub fn new_reference(file ?&PsiFile, element ReferenceExpressionBase, for_types bool) &ReferenceImpl {
 	return &ReferenceImpl{
 		element:   element
@@ -21,6 +22,7 @@ pub fn new_reference(file ?&PsiFile, element ReferenceExpressionBase, for_types 
 	}
 }
 
+// new_attribute_reference creates a reference that resolves an attribute name.
 pub fn new_attribute_reference(file ?&PsiFile, element ReferenceExpressionBase) &ReferenceImpl {
 	return &ReferenceImpl{
 		element:        element
@@ -33,6 +35,7 @@ fn (r &ReferenceImpl) element() PsiElement {
 	return r.element as PsiElement
 }
 
+// resolve returns the element the reference names, caching the result for later lookups.
 pub fn (r &ReferenceImpl) resolve() ?PsiElement {
 	file := r.file or { return none }
 
@@ -62,6 +65,7 @@ pub fn (r &ReferenceImpl) resolve() ?PsiElement {
 	return result
 }
 
+// multi_resolve returns every element the reference could name, not just the first.
 pub fn (r &ReferenceImpl) multi_resolve() []PsiElement {
 	file := r.file or { return [] }
 
@@ -117,6 +121,7 @@ fn (r &SubResolver) element() PsiElement {
 	return r.element as PsiElement
 }
 
+// process_resolve_variants resolves through the qualifier when the reference has one, and searches the visible scopes otherwise.
 pub fn (r &SubResolver) process_resolve_variants(mut processor PsiScopeProcessor) bool {
 	return if qualifier := r.element.qualifier() {
 		r.process_qualifier_expression(qualifier, mut processor)
@@ -125,6 +130,7 @@ pub fn (r &SubResolver) process_resolve_variants(mut processor PsiScopeProcessor
 	}
 }
 
+// process_qualifier_expression feeds the members the qualifier exposes to the processor.
 pub fn (r &SubResolver) process_qualifier_expression(qualifier PsiElement, mut processor PsiScopeProcessor) bool {
 	if qualifier is PsiTypedElement {
 		typ := infer_type(qualifier as PsiElement)
@@ -178,6 +184,7 @@ pub fn (r &SubResolver) process_qualifier_expression(qualifier PsiElement, mut p
 	return true
 }
 
+// process_elements feeds each element to the processor, stopping when it returns false.
 pub fn (r &SubResolver) process_elements(elements []PsiElement, mut processor PsiScopeProcessor) bool {
 	for element in elements {
 		if !processor.execute(element) {
@@ -187,6 +194,7 @@ pub fn (r &SubResolver) process_elements(elements []PsiElement, mut processor Ps
 	return true
 }
 
+// process_type feeds the members reachable through typ to the processor.
 pub fn (r &SubResolver) process_type(typ types.Type, mut processor PsiScopeProcessor) bool {
 	if typ is types.StructType {
 		if struct_ := r.find_struct(stubs_index, typ.qualified_name()) {
@@ -376,14 +384,17 @@ pub fn (r &SubResolver) process_type(typ types.Type, mut processor PsiScopeProce
 	return true
 }
 
+// process_any_type feeds the methods every type shares to the processor.
 pub fn (r &SubResolver) process_any_type(mut processor PsiScopeProcessor) bool {
 	return r.process_methods(types.any_type, mut processor)
 }
 
+// process_methods feeds the methods defined on typ to the processor.
 pub fn (r &SubResolver) process_methods(typ types.Type, mut processor PsiScopeProcessor) bool {
 	return r.process_elements(methods_list(typ), mut processor)
 }
 
+// process_unqualified_resolve searches every scope visible from an unqualified reference.
 pub fn (r &SubResolver) process_unqualified_resolve(mut processor PsiScopeProcessor) bool {
 	if r.for_attributes {
 		return r.resolve_attribute(mut processor)
@@ -502,6 +513,7 @@ pub fn (r &SubResolver) process_unqualified_resolve(mut processor PsiScopeProces
 	return true
 }
 
+// walk_up walks the parents of element, feeding each scope's declarations to the processor.
 pub fn (r &SubResolver) walk_up(element PsiElement, mut processor PsiScopeProcessor) bool {
 	mut run := element
 	mut last_parent := element
@@ -560,6 +572,7 @@ pub fn (r &SubResolver) walk_up(element PsiElement, mut processor PsiScopeProces
 	return true
 }
 
+// process_parameters feeds the parameters of the enclosing function to the processor.
 pub fn (_ &SubResolver) process_parameters(b Block, mut processor PsiScopeProcessor) bool {
 	parent := b.parent() or { return true }
 
@@ -577,6 +590,7 @@ pub fn (_ &SubResolver) process_parameters(b Block, mut processor PsiScopeProces
 	return true
 }
 
+// process_receiver feeds the receiver of the enclosing method to the processor.
 pub fn (_ &SubResolver) process_receiver(b Block, mut processor PsiScopeProcessor) bool {
 	parent := b.parent() or { return true }
 
@@ -590,6 +604,7 @@ pub fn (_ &SubResolver) process_receiver(b Block, mut processor PsiScopeProcesso
 	return true
 }
 
+// process_block searches the scopes enclosing the reference, starting from its own block.
 pub fn (r &SubResolver) process_block(mut processor PsiScopeProcessor) bool {
 	// if r.containing_file.is_stub_based() {
 	// 	return true
@@ -609,12 +624,14 @@ pub fn (r &SubResolver) process_block(mut processor PsiScopeProcessor) bool {
 	return r.walk_up(r.element as PsiElement, mut processor)
 }
 
+// process_module_clause feeds the file's module clause to the processor.
 pub fn (r &SubResolver) process_module_clause(mut processor PsiScopeProcessor) bool {
 	file := r.containing_file or { return true }
 	mod := file.module_clause() or { return true }
 	return processor.execute(mod)
 }
 
+// process_imported_modules feeds the import spec the reference names to the processor.
 pub fn (r &SubResolver) process_imported_modules(mut processor PsiScopeProcessor) bool {
 	file := r.containing_file or { return true }
 	search_name := r.element().get_text()
@@ -627,6 +644,7 @@ pub fn (r &SubResolver) process_imported_modules(mut processor PsiScopeProcessor
 	return true
 }
 
+// process_selective_imports resolves the reference against the symbols a selective import brings in.
 pub fn (r &SubResolver) process_selective_imports(mut processor PsiScopeProcessor) bool {
 	element := r.element as PsiElement
 	name := r.element.name()
@@ -651,11 +669,13 @@ pub fn (r &SubResolver) process_selective_imports(mut processor PsiScopeProcesso
 	return true
 }
 
+// process_enum_fetch resolves the fetch against the enum type the context expects.
 pub fn (r &SubResolver) process_enum_fetch(parent PsiElement, mut processor PsiScopeProcessor) bool {
 	context_type := TypeInferer{}.infer_context_type(parent)
 	return r.process_type(context_type, mut processor)
 }
 
+// process_type_initializer_field feeds the fields of the initialised type to the processor.
 pub fn (r &SubResolver) process_type_initializer_field(mut processor PsiScopeProcessor) bool {
 	if init_expr := r.element().parent_of_type(.type_initializer) {
 		if init_expr is PsiTypedElement {
@@ -703,6 +723,7 @@ pub fn (r &SubResolver) process_type_initializer_field(mut processor PsiScopePro
 	return true
 }
 
+// process_struct_type_fields feeds the fields of struct_type to the processor.
 pub fn (r &SubResolver) process_struct_type_fields(struct_type types.StructType, mut processor PsiScopeProcessor) bool {
 	if struct_ := r.find_struct(stubs_index, struct_type.qualified_name()) {
 		fields := struct_.fields()
@@ -715,6 +736,7 @@ pub fn (r &SubResolver) process_struct_type_fields(struct_type types.StructType,
 	return true
 }
 
+// process_os_module feeds the os module to the processor, since a shell script has it imported implicitly.
 pub fn (r &SubResolver) process_os_module(mut processor PsiScopeProcessor) bool {
 	file := r.containing_file or { return true }
 
@@ -727,6 +749,7 @@ pub fn (r &SubResolver) process_os_module(mut processor PsiScopeProcessor) bool 
 	return r.process_elements(os_elements, mut processor)
 }
 
+// process_owner_generic_ts feeds the generic parameters of the receiver's type to the processor.
 pub fn (r &SubResolver) process_owner_generic_ts(mut processor PsiScopeProcessor) bool {
 	element := r.element()
 	if element.text_length() != 1 {
@@ -768,6 +791,7 @@ pub fn (r &SubResolver) process_owner_generic_ts(mut processor PsiScopeProcessor
 	return true
 }
 
+// find_function returns the function or method named name, or none.
 pub fn (_ &SubResolver) find_function(stub_index StubIndex, name string) ?&FunctionOrMethodDeclaration {
 	found := stub_index.get_elements_by_name(.functions, name)
 	if found.len != 0 {
@@ -779,6 +803,7 @@ pub fn (_ &SubResolver) find_function(stub_index StubIndex, name string) ?&Funct
 	return none
 }
 
+// find_struct returns the struct named name, or none.
 pub fn (_ &SubResolver) find_struct(stub_index StubIndex, name string) ?&StructDeclaration {
 	found := stub_index.get_elements_by_name(.structs, name)
 	if found.len != 0 {
@@ -790,6 +815,7 @@ pub fn (_ &SubResolver) find_struct(stub_index StubIndex, name string) ?&StructD
 	return none
 }
 
+// find_interface returns the interface named name, or none.
 pub fn (_ &SubResolver) find_interface(stub_index StubIndex, name string) ?&InterfaceDeclaration {
 	found := stub_index.get_elements_by_name(.interfaces, name)
 	if found.len != 0 {
@@ -801,6 +827,7 @@ pub fn (_ &SubResolver) find_interface(stub_index StubIndex, name string) ?&Inte
 	return none
 }
 
+// find_enum returns the enum named name, or none.
 pub fn (_ &SubResolver) find_enum(stub_index StubIndex, name string) ?&EnumDeclaration {
 	found := stub_index.get_elements_by_name(.enums, name)
 	if found.len != 0 {
@@ -812,6 +839,7 @@ pub fn (_ &SubResolver) find_enum(stub_index StubIndex, name string) ?&EnumDecla
 	return none
 }
 
+// find_constant returns the constant named name, or none.
 pub fn (_ &SubResolver) find_constant(stub_index StubIndex, name string) ?&ConstantDefinition {
 	found := stub_index.get_elements_by_name(.constants, name)
 	if found.len != 0 {
@@ -823,6 +851,7 @@ pub fn (_ &SubResolver) find_constant(stub_index StubIndex, name string) ?&Const
 	return none
 }
 
+// find_type_alias returns the type alias named name, or none.
 pub fn (_ &SubResolver) find_type_alias(stub_index StubIndex, name string) ?&TypeAliasDeclaration {
 	found := stub_index.get_elements_by_name(.type_aliases, name)
 	if found.len != 0 {
@@ -834,6 +863,7 @@ pub fn (_ &SubResolver) find_type_alias(stub_index StubIndex, name string) ?&Typ
 	return none
 }
 
+// find_global_variable returns the global variable named name, or none.
 pub fn (_ &SubResolver) find_global_variable(stub_index StubIndex, name string) ?&GlobalVarDefinition {
 	found := stub_index.get_elements_by_name(.global_variables, name)
 	if found.len != 0 {
@@ -845,6 +875,7 @@ pub fn (_ &SubResolver) find_global_variable(stub_index StubIndex, name string) 
 	return none
 }
 
+// find_attribute returns the struct that backs the attribute named name, or none.
 pub fn (_ &SubResolver) find_attribute(stub_index StubIndex, name string) ?&StructDeclaration {
 	found := stub_index.get_elements_by_name(.attributes, name)
 	if found.len != 0 {
@@ -856,6 +887,7 @@ pub fn (_ &SubResolver) find_attribute(stub_index StubIndex, name string) ?&Stru
 	return none
 }
 
+// resolve_attribute resolves the reference against the registered attributes.
 pub fn (r &SubResolver) resolve_attribute(mut processor PsiScopeProcessor) bool {
 	element := r.element()
 	if element is PsiNamedElement {
@@ -899,6 +931,7 @@ fn (mut r ResolveProcessor) execute(element PsiElement) bool {
 	return true
 }
 
+// find_element returns the first element with the given fully qualified name, or none.
 pub fn find_element(fqn string) ?PsiElement {
 	found := stubs_index.get_any_elements_by_name(fqn)
 	if found.len != 0 {
@@ -907,6 +940,7 @@ pub fn find_element(fqn string) ?PsiElement {
 	return none
 }
 
+// find_interface returns the interface with the given fully qualified name, or none.
 pub fn find_interface(fqn string) ?&InterfaceDeclaration {
 	found := stubs_index.get_elements_by_name(.interfaces, fqn)
 	if found.len != 0 {
@@ -918,6 +952,7 @@ pub fn find_interface(fqn string) ?&InterfaceDeclaration {
 	return none
 }
 
+// find_struct returns the struct with the given fully qualified name, or none.
 pub fn find_struct(fqn string) ?&StructDeclaration {
 	found := stubs_index.get_elements_by_name(.structs, fqn)
 	if found.len != 0 {
@@ -929,6 +964,7 @@ pub fn find_struct(fqn string) ?&StructDeclaration {
 	return none
 }
 
+// find_alias returns the type alias with the given fully qualified name, or none.
 pub fn find_alias(fqn string) ?&TypeAliasDeclaration {
 	found := stubs_index.get_elements_by_name(.type_aliases, fqn)
 	if found.len != 0 {

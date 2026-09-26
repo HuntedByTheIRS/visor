@@ -9,6 +9,7 @@ pub struct Attribute {
 
 fn (_ &Attribute) stub() {}
 
+// expressions returns the attribute expressions of this attribute, from its stub when it has one.
 pub fn (n Attribute) expressions() []PsiElement {
 	if stub := n.get_stub() {
 		return stub.get_children_by_type(.attribute_expression).get_psi()
@@ -17,6 +18,7 @@ pub fn (n Attribute) expressions() []PsiElement {
 	return n.find_children_by_type(.attribute_expression)
 }
 
+// keys returns the value of each attribute expression, dropping the ones that carry no value.
 pub fn (n Attribute) keys() []string {
 	expressions := n.expressions()
 	if expressions.len == 0 {

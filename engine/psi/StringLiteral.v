@@ -7,6 +7,7 @@ pub struct StringLiteral {
 	PsiElementImpl
 }
 
+// content returns the literal's text with the surrounding quotes removed.
 pub fn (n StringLiteral) content() string {
 	text := n.get_text()
 	return text[1..text.len - 1]

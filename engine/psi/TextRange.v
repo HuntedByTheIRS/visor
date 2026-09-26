@@ -12,6 +12,7 @@ pub:
 	end_column int
 }
 
+// == reports whether the two ranges cover the same span.
 pub fn (t TextRange) == (other TextRange) bool {
 	return t.line == other.line && t.column == other.column && t.end_line == other.end_line
 		&& t.end_column == other.end_column

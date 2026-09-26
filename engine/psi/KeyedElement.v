@@ -7,6 +7,7 @@ pub struct KeyedElement {
 	PsiElementImpl
 }
 
+// field returns the key of a keyed element, if it was written with one.
 pub fn (n KeyedElement) field() ?&FieldName {
 	first_child := n.first_child()?
 	if first_child is FieldName {
@@ -15,6 +16,7 @@ pub fn (n KeyedElement) field() ?&FieldName {
 	return none
 }
 
+// value returns the value the key holds.
 pub fn (n KeyedElement) value() ?PsiElement {
 	return n.last_child()
 }

@@ -31,6 +31,7 @@ fn (mut r PrinterVisitor) visit_element_impl(element PsiElement) bool {
 	return true
 }
 
+// print writes each node line with the source text beside it.
 pub fn (r &PrinterVisitor) print() {
 	max_line_width := arrays.max(r.lines.map(it.len)) or { 0 }
 	for i, line in r.lines {

@@ -48,6 +48,7 @@ pub mut:
 	malformed_frames int
 }
 
+// new_frame_reader returns a reader that turns the bytes of r into frames.
 pub fn new_frame_reader(r io.Reader) &FrameReader {
 	return &FrameReader{
 		r: r

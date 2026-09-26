@@ -13,6 +13,7 @@ fn (c &OrBlockExpression) get_type() types.Type {
 	return infer_type(PsiElement(c))
 }
 
+// expression returns the expression the or block guards.
 pub fn (c OrBlockExpression) expression() ?PsiElement {
 	return c.first_child()
 }

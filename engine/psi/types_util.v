@@ -17,6 +17,7 @@ pub fn own_methods_list(typ types.Type) []PsiElement {
 	return methods
 }
 
+// fields_list returns the fields of the struct named by typ, or an empty list when typ is not a known struct.
 pub fn fields_list(typ types.Type) []PsiElement {
 	name := typ.qualified_name()
 	structs := stubs_index.get_elements_by_name(.structs, name)
@@ -31,6 +32,7 @@ pub fn fields_list(typ types.Type) []PsiElement {
 	return []
 }
 
+// methods_list returns the methods callable on typ, including those reached through an alias or an embedded type.
 pub fn methods_list(typ types.Type) []PsiElement {
 	mut result := own_methods_list(typ)
 
@@ -62,6 +64,7 @@ pub fn methods_list(typ types.Type) []PsiElement {
 	return result
 }
 
+// find_method returns the method named name on typ, or none when typ has no such method.
 pub fn find_method(typ types.Type, name string) ?PsiElement {
 	methods := methods_list(typ)
 	for method in methods {
@@ -74,6 +77,7 @@ pub fn find_method(typ types.Type, name string) ?PsiElement {
 	return none
 }
 
+// static_methods_list returns the static methods declared on the type named by typ.
 pub fn static_methods_list(typ types.Type) []PsiElement {
 	module_name := typ.module_name()
 	name := typ.name()

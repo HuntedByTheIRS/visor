@@ -7,10 +7,12 @@ pub struct SliceExpression {
 	PsiElementImpl
 }
 
+// expression returns the expression being sliced.
 pub fn (c SliceExpression) expression() ?PsiElement {
 	return c.first_child()
 }
 
+// resolve returns what the sliced expression refers to, or none when it cannot be resolved.
 pub fn (c SliceExpression) resolve() ?PsiElement {
 	expr := if selector_expr := c.find_child_by_type(.selector_expression) {
 		selector_expr as ReferenceExpressionBase

@@ -9,6 +9,7 @@ pub struct Receiver {
 	PsiElementImpl
 }
 
+// is_public always returns true because a receiver never carries a visibility modifier of its own.
 pub fn (r &Receiver) is_public() bool {
 	return true
 }
@@ -26,6 +27,7 @@ fn (r &Receiver) identifier() ?PsiElement {
 	return r.find_child_by_type(.identifier)
 }
 
+// name returns the receiver's name, taken from the stub when one is attached.
 pub fn (r &Receiver) name() string {
 	if stub := r.get_stub() {
 		return stub.name
@@ -35,6 +37,7 @@ pub fn (r &Receiver) name() string {
 	return identifier.get_text()
 }
 
+// type_element returns the node holding the receiver's type, or none when it has no explicit type.
 pub fn (r &Receiver) type_element() ?PsiElement {
 	if stub := r.get_stub() {
 		if receiver_stub := stub.get_child_by_type(.plain_type) {
@@ -51,10 +54,12 @@ pub fn (r &Receiver) type_element() ?PsiElement {
 	return r.find_child_by_type(.plain_type)
 }
 
+// get_type returns the receiver's type as resolved by type inference.
 pub fn (r &Receiver) get_type() types.Type {
 	return infer_type(PsiElement(r))
 }
 
+// mutability_modifiers returns the receiver's mutability modifiers, or none when it has none.
 pub fn (r &Receiver) mutability_modifiers() ?&MutabilityModifiers {
 	modifiers := r.find_child_by_type_or_stub(.mutability_modifiers)?
 	if modifiers is MutabilityModifiers {
@@ -63,6 +68,7 @@ pub fn (r &Receiver) mutability_modifiers() ?&MutabilityModifiers {
 	return none
 }
 
+// is_mutable reports whether the receiver is declared mutable.
 pub fn (r &Receiver) is_mutable() bool {
 	mods := r.mutability_modifiers() or { return false }
 	return mods.is_mutable()

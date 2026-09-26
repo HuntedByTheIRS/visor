@@ -42,6 +42,7 @@ pub mut:
 	messages []string
 }
 
+// send appends a message to the buffer a test reads back.
 pub fn (mut b BufferSink) send(message string) {
 	b.messages << message
 }
@@ -102,6 +103,8 @@ pub mut:
 	workspace_folders     []WorkspaceFolder
 }
 
+// new_server builds a server that writes to sink and registers the methods of the
+// protocol core.
 pub fn new_server(sink Sender) &Server {
 	mut s := &Server{
 		sink:      sink
@@ -224,6 +227,9 @@ fn (mut s Server) note_cancel(m Message) {
 	s.cancel.mark(params['id'] or { null_value() })
 }
 
+// serve_message routes one message to the handler for its kind. A body that could
+// not be used is answered before the phase check; a message in the wrong phase is
+// answered with an error when it is a request, and dropped when it is not.
 pub fn (mut s Server) serve_message(m Message) {
 	if m.kind == .invalid {
 		// A body that could not be used has no method and no phase, so it is

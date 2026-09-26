@@ -10,11 +10,13 @@ pub struct ConstantDefinition {
 	PsiElementImpl
 }
 
+// is_public reports whether the constant was declared pub.
 pub fn (c &ConstantDefinition) is_public() bool {
 	modifiers := c.visibility_modifiers() or { return false }
 	return modifiers.is_public()
 }
 
+// get_type infers the type of the constant's expression, or unknown_type when it has none.
 pub fn (c &ConstantDefinition) get_type() types.Type {
 	expr := c.expression() or { return types.unknown_type }
 	res := infer_type(expr)
@@ -30,6 +32,7 @@ fn (c &ConstantDefinition) identifier() ?PsiElement {
 	return c.find_child_by_type(.identifier)
 }
 
+// identifier_text_range returns the range of the constant's name.
 pub fn (c ConstantDefinition) identifier_text_range() TextRange {
 	if stub := c.get_stub() {
 		return stub.identifier_text_range
@@ -39,6 +42,7 @@ pub fn (c ConstantDefinition) identifier_text_range() TextRange {
 	return identifier.text_range()
 }
 
+// name returns the constant's name.
 pub fn (c ConstantDefinition) name() string {
 	if stub := c.get_stub() {
 		return stub.name
@@ -48,6 +52,7 @@ pub fn (c ConstantDefinition) name() string {
 	return identifier.get_text()
 }
 
+// doc_comment returns the comment above the constant, with the leading slashes stripped.
 pub fn (c ConstantDefinition) doc_comment() string {
 	if stub := c.get_stub() {
 		return stub.comment
@@ -56,6 +61,7 @@ pub fn (c ConstantDefinition) doc_comment() string {
 	return extract_doc_comment(parent)
 }
 
+// visibility_modifiers returns the pub marker on the constant, or none when it is not public.
 pub fn (c ConstantDefinition) visibility_modifiers() ?&VisibilityModifiers {
 	if c.stub_based() {
 		modifiers := c.prev_sibling_of_type(.visibility_modifiers)?
@@ -73,6 +79,8 @@ pub fn (c ConstantDefinition) visibility_modifiers() ?&VisibilityModifiers {
 	return none
 }
 
+// expression returns the value on the right of the constant, rebuilt from the stub when the
+// constant came from an index.
 pub fn (c &ConstantDefinition) expression() ?PsiElement {
 	if stub := c.get_stub() {
 		file := c.containing_file() or { return none }
@@ -89,4 +97,5 @@ pub fn (c &ConstantDefinition) expression() ?PsiElement {
 	return c.last_child()
 }
 
+// stub is the marker method that lets the constant be rebuilt from an index stub.
 pub fn (_ ConstantDefinition) stub() {}

@@ -456,6 +456,7 @@ pub fn create_element(node AstNode, containing_file ?&PsiFile) PsiElement {
 	}
 }
 
+// node_to_var_definition builds the variable definition a node introduces, or nil when the node defines no variable.
 @[inline]
 pub fn node_to_var_definition(node AstNode, containing_file ?&PsiFile, base_node ?PsiElementImpl) &VarDefinition {
 	if node.type_name == .var_definition {

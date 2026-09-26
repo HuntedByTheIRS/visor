@@ -7,6 +7,7 @@ pub struct FunctionLiteral {
 	PsiElementImpl
 }
 
+// signature returns the literal's signature, or none when it has none.
 pub fn (f FunctionLiteral) signature() ?&Signature {
 	signature := f.find_child_by_type_or_stub(.signature)?
 	if signature is Signature {

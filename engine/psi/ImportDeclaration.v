@@ -7,6 +7,7 @@ pub struct ImportDeclaration {
 	PsiElementImpl
 }
 
+// spec returns the import specification of the declaration, if it has one.
 pub fn (n &ImportDeclaration) spec() ?&ImportSpec {
 	spec := n.find_child_by_type(.import_spec)?
 	if spec is ImportSpec {

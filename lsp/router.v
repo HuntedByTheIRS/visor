@@ -19,12 +19,14 @@ pub:
 	err_text string
 }
 
+// ok builds a successful reply carrying the handler's result.
 pub fn ok(result json2.Any) Reply {
 	return Reply{
 		result: result
 	}
 }
 
+// fail builds an error reply with the given code and message.
 pub fn fail(code int, text string) Reply {
 	return Reply{
 		err_code: code
@@ -32,6 +34,7 @@ pub fn fail(code int, text string) Reply {
 	}
 }
 
+// failed reports whether the reply carries an error.
 pub fn (r &Reply) failed() bool {
 	return r.err_code != 0
 }
@@ -78,10 +81,12 @@ pub fn (r &Router) knows(method string) bool {
 	return method in r.handlers || method in r.stubs
 }
 
+// served_count returns the number of handlers registered on the router.
 pub fn (r &Router) served_count() int {
 	return r.handlers.len
 }
 
+// stub_count returns the number of stubs registered on the router.
 pub fn (r &Router) stub_count() int {
 	return r.stubs.len
 }

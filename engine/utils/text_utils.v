@@ -18,6 +18,7 @@ pub fn pascal_case_to_snake_case(s string) string {
 	return res
 }
 
+// snake_case_to_camel_case returns s with each underscore dropped and the letter after it uppercased.
 pub fn snake_case_to_camel_case(s string) string {
 	mut res := ''
 	mut upper := false

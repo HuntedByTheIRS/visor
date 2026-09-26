@@ -9,6 +9,7 @@ pub struct GenericTypeArguments {
 	PsiElementImpl
 }
 
+// types resolves every type argument to a type, in source order.
 pub fn (n GenericTypeArguments) types() []types.Type {
 	plain_types := n.find_children_by_type(.plain_type)
 

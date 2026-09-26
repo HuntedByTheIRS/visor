@@ -7,6 +7,7 @@ pub struct SourceFile {
 	PsiElementImpl
 }
 
+// process_declarations offers the file's variable declarations to the processor, stopping at last_parent or when the processor returns false.
 pub fn (b SourceFile) process_declarations(mut processor PsiScopeProcessor, last_parent PsiElement) bool {
 	statements := b.find_children_by_type(.simple_statement)
 	for statement in statements {

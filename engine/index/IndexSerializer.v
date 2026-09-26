@@ -10,12 +10,14 @@ mut:
 	s Serializer
 }
 
+// serialize_index writes the index header and every file index it holds.
 pub fn (mut s IndexSerializer) serialize_index(value Index) {
 	s.s.write_string(value.version)
 	s.s.write_i64(value.updated_at.unix())
 	s.serialize_file_indexes(value.per_file.data)
 }
 
+// serialize_file_indexes writes the number of file indexes followed by each of them.
 pub fn (mut s IndexSerializer) serialize_file_indexes(indexes map[string]FileIndex) {
 	s.s.write_int(indexes.len)
 	for _, file_index in indexes {
@@ -23,6 +25,7 @@ pub fn (mut s IndexSerializer) serialize_file_indexes(indexes map[string]FileInd
 	}
 }
 
+// serialize_file_index writes the kind, modification time, stub list and sinks of one file.
 pub fn (mut s IndexSerializer) serialize_file_index(value FileIndex) {
 	s.s.write_u8(u8(value.kind))
 	s.s.write_i64(value.file_last_modified)
@@ -31,6 +34,7 @@ pub fn (mut s IndexSerializer) serialize_file_index(value FileIndex) {
 	s.serialize_stub_index_sink(value.sink)
 }
 
+// serialize_stub_index_sink writes the sink entries and the modules it imported.
 pub fn (mut s IndexSerializer) serialize_stub_index_sink(sink &psi.StubIndexSink) {
 	s.s.write_int(sink.data.len)
 	for key, datum in sink.data {
@@ -44,6 +48,7 @@ pub fn (mut s IndexSerializer) serialize_stub_index_sink(sink &psi.StubIndexSink
 	}
 }
 
+// serialize_stub_index_sink_map writes stub ids grouped under their string key.
 pub fn (mut s IndexSerializer) serialize_stub_index_sink_map(sink_map map[string][]psi.StubId) {
 	s.s.write_int(sink_map.len)
 	for key, stub_ids in sink_map {
@@ -55,6 +60,7 @@ pub fn (mut s IndexSerializer) serialize_stub_index_sink_map(sink_map map[string
 	}
 }
 
+// serialize_stub_list writes the path, module name, child map and stubs of a stub list.
 pub fn (mut s IndexSerializer) serialize_stub_list(list psi.StubList) {
 	s.s.write_string(list.path)
 	s.s.write_string(list.module_fqn)
@@ -74,6 +80,7 @@ pub fn (mut s IndexSerializer) serialize_stub_list(list psi.StubList) {
 	}
 }
 
+// serialize_stub writes the text, comment, receiver, name and ranges of one stub.
 pub fn (mut s IndexSerializer) serialize_stub(stub psi.StubBase) {
 	s.s.write_string(stub.text)
 	s.s.write_string(stub.comment)

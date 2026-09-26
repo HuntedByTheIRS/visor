@@ -68,12 +68,16 @@ mut:
 	v_parser &parser.Parser = unsafe { nil }
 }
 
+// new_parser_engine returns a parser backed by the vendored tree-sitter
+// grammar.
 pub fn new_parser_engine() &TreeSitterParser {
 	return &TreeSitterParser{
 		v_parser: parser.Parser.new()
 	}
 }
 
+// parse_file parses the file at path, returning the text it read and the tree
+// over it.
 pub fn (mut p TreeSitterParser) parse_file(path string) !ParsedFile {
 	res := p.v_parser.parse_file(path)!
 	return ParsedFile{
@@ -83,6 +87,8 @@ pub fn (mut p TreeSitterParser) parse_file(path string) !ParsedFile {
 	}
 }
 
+// parse_source parses text as the file at path. The path labels the result;
+// the text is what gets parsed.
 pub fn (p &TreeSitterParser) parse_source(text string, path string) ParsedFile {
 	// The binding parser is reached through a pointer, so this copy still
 	// writes to the one parser this engine owns.
@@ -95,10 +101,12 @@ pub fn (p &TreeSitterParser) parse_source(text string, path string) ParsedFile {
 	}
 }
 
+// node_at returns the deepest node covering offset in the parsed file.
 pub fn (p &TreeSitterParser) node_at(file ParsedFile, offset u32) ?Node {
 	return node_at_position(file.root, offset)
 }
 
+// free releases the parser this engine owns.
 pub fn (mut p TreeSitterParser) free() {
 	p.v_parser.free()
 }

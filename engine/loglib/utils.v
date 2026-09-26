@@ -13,6 +13,8 @@ pub fn check_if_terminal(w io.Writer) bool {
 	return false
 }
 
+// is_terminal reports whether the file descriptor is attached to a terminal.
+// On Windows a ConEmu console or one with virtual terminal processing counts.
 pub fn is_terminal(fd int) bool {
 	$if windows {
 		env_conemu := os.getenv('ConEmuANSI')

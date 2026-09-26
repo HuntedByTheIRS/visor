@@ -27,12 +27,14 @@ fn (_ &VoidPtrType) module_name() string {
 	return ''
 }
 
+// accept offers the type to the visitor; voidptr has nothing nested inside it to visit further.
 pub fn (s &VoidPtrType) accept(mut visitor TypeVisitor) {
 	if !visitor.enter(s) {
 		return
 	}
 }
 
+// substitute_generics returns the type unchanged, since voidptr carries no generic parameters.
 pub fn (s &VoidPtrType) substitute_generics(name_map map[string]Type) Type {
 	return s
 }

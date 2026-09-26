@@ -13,6 +13,7 @@ pub:
 	no_result bool
 }
 
+// new_function_type returns a function type built from the given parameters and result.
 pub fn new_function_type(module_name string, params []Type, result Type, no_result bool) &FunctionType {
 	return &FunctionType{
 		params:      params
@@ -22,6 +23,7 @@ pub fn new_function_type(module_name string, params []Type, result Type, no_resu
 	}
 }
 
+// name returns the function type in source form, omitting the result when the function has none.
 pub fn (s &FunctionType) name() string {
 	mut sb := strings.new_builder(20)
 	sb.write_string('fn (')
@@ -40,6 +42,7 @@ pub fn (s &FunctionType) name() string {
 	return sb.str()
 }
 
+// qualified_name returns the function type with each parameter and the result type fully qualified.
 pub fn (s &FunctionType) qualified_name() string {
 	mut sb := strings.new_builder(20)
 	sb.write_string('fn (')
@@ -58,6 +61,7 @@ pub fn (s &FunctionType) qualified_name() string {
 	return sb.str()
 }
 
+// readable_name returns the function type with names stripped of their module, for messages shown to a user.
 pub fn (s &FunctionType) readable_name() string {
 	mut sb := strings.new_builder(20)
 	sb.write_string('fn (')
@@ -76,6 +80,7 @@ pub fn (s &FunctionType) readable_name() string {
 	return sb.str()
 }
 
+// accept lets the visitor enter this type and then each parameter and the result type.
 pub fn (s &FunctionType) accept(mut visitor TypeVisitor) {
 	if !visitor.enter(s) {
 		return
@@ -88,6 +93,7 @@ pub fn (s &FunctionType) accept(mut visitor TypeVisitor) {
 	s.result.accept(mut visitor)
 }
 
+// substitute_generics returns a new function type with the generic parameters replaced according to name_map.
 pub fn (s &FunctionType) substitute_generics(name_map map[string]Type) Type {
 	params := s.params.map(it.substitute_generics(name_map))
 	result := s.result.substitute_generics(name_map)

@@ -7,6 +7,8 @@ pub struct ForStatement {
 	PsiElementImpl
 }
 
+// var_definitions returns the variables a for statement binds, from a range clause or
+// from a C-style for clause.
 pub fn (n ForStatement) var_definitions() []PsiElement {
 	if range_clause := n.find_child_by_type(.range_clause) {
 		var_definition_list := range_clause.find_child_by_type(.var_definition_list) or {

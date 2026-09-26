@@ -13,6 +13,7 @@ fn (c &OptionPropagationExpression) get_type() types.Type {
 	return infer_type(PsiElement(c))
 }
 
+// expression returns the operand the ? propagates from.
 pub fn (c OptionPropagationExpression) expression() ?PsiElement {
 	return c.first_child()
 }

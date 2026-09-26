@@ -40,10 +40,12 @@ fn (n &QualifiedType) get_type() types.Type {
 	return types.unknown_type
 }
 
+// left returns the first child, the module or type on the left of the dot.
 pub fn (n QualifiedType) left() ?PsiElement {
 	return n.first_child_or_stub()
 }
 
+// right returns the last child, the name on the right of the dot.
 pub fn (n QualifiedType) right() ?PsiElement {
 	return n.last_child_or_stub()
 }

@@ -56,10 +56,12 @@ fn (n &SelectorExpression) get_type() types.Type {
 	return types.unknown_type
 }
 
+// left returns the expression before the dot.
 pub fn (n SelectorExpression) left() ?PsiElement {
 	return n.first_child()
 }
 
+// right returns the field or method name after the dot.
 pub fn (n SelectorExpression) right() ?PsiElement {
 	return n.last_child()
 }

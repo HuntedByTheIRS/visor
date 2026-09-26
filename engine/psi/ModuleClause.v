@@ -11,6 +11,7 @@ pub struct ModuleClause {
 
 fn (_ &ModuleClause) stub() {}
 
+// is_public reports whether the clause is visible outside its module; a module clause always is, so this returns true.
 pub fn (_ &ModuleClause) is_public() bool {
 	return true
 }
@@ -19,6 +20,7 @@ fn (n &ModuleClause) identifier() ?PsiElement {
 	return n.find_child_by_type(.identifier)
 }
 
+// identifier_text_range returns the range of the module name, using the stub when the clause comes from an index.
 pub fn (n &ModuleClause) identifier_text_range() TextRange {
 	if stub := n.get_stub() {
 		return stub.identifier_text_range
@@ -28,6 +30,7 @@ pub fn (n &ModuleClause) identifier_text_range() TextRange {
 	return identifier.text_range()
 }
 
+// name returns the module name as written in the clause, or an empty string when the identifier cannot be found.
 pub fn (n ModuleClause) name() string {
 	if stub := n.get_stub() {
 		return stub.name
@@ -37,6 +40,7 @@ pub fn (n ModuleClause) name() string {
 	return identifier.get_text()
 }
 
+// module_qualified_name returns the dotted module path of a file, derived from its directories below the indexing root.
 pub fn module_qualified_name(file &PsiFile, indexing_root string) string {
 	module_name := file.module_name() or { '' }
 	if module_name in ['main', 'builtin'] {

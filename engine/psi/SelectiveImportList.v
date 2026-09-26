@@ -7,6 +7,7 @@ pub struct SelectiveImportList {
 	PsiElementImpl
 }
 
+// symbols returns the reference expressions named in the selective import.
 pub fn (n &SelectiveImportList) symbols() []ReferenceExpression {
 	children := n.find_children_by_type_or_stub(.reference_expression)
 	mut res := []ReferenceExpression{cap: children.len}

@@ -15,6 +15,7 @@ pub struct StructType {
 	BaseNamedType
 }
 
+// new_struct_type creates a struct type with the given name and module.
 pub fn new_struct_type(name string, module_name string) &StructType {
 	return &StructType{
 		name:        name
@@ -22,12 +23,14 @@ pub fn new_struct_type(name string, module_name string) &StructType {
 	}
 }
 
+// accept lets the visitor enter this type; a struct type has no children to visit.
 pub fn (s &StructType) accept(mut visitor TypeVisitor) {
 	if !visitor.enter(s) {
 		return
 	}
 }
 
+// substitute_generics returns the type unchanged; a struct type carries no generic parameters of its own.
 pub fn (s &StructType) substitute_generics(name_map map[string]Type) Type {
 	return s
 }

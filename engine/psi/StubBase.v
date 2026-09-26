@@ -32,6 +32,7 @@ pub mut:
 	id        StubId
 }
 
+// new_stub_base allocates a stub, registers it in its parent's stub list and returns it.
 pub fn new_stub_base(parent &StubElement, stub_type StubType, name string, identifier_text_range TextRange,
 	text_range TextRange, data StubData) &StubBase {
 	mut stub_list := if parent is StubBase {
@@ -56,6 +57,7 @@ pub fn new_stub_base(parent &StubElement, stub_type StubType, name string, ident
 	return stub
 }
 
+// new_root_stub creates the stub that roots the stub tree of the file at path.
 pub fn new_root_stub(path string) &StubBase {
 	mut stub_list := &StubList{
 		path: path
@@ -70,14 +72,17 @@ pub fn new_root_stub(path string) &StubBase {
 	return stub
 }
 
+// id returns the stub's identity, which its children and siblings use to address it.
 pub fn (s &StubBase) id() StubId {
 	return s.id
 }
 
+// stub_type returns the kind of element this stub was built for.
 pub fn (s &StubBase) stub_type() StubType {
 	return s.stub_type
 }
 
+// element_type maps the stub kind onto the tree-sitter node type of the element.
 pub fn (s &StubBase) element_type() bindings.NodeType {
 	return match s.stub_type {
 		.root { .unknown }
@@ -138,18 +143,22 @@ pub fn (s &StubBase) element_type() bindings.NodeType {
 	}
 }
 
+// name returns the element's name, which is an empty string when it has none.
 pub fn (s StubBase) name() string {
 	return s.name
 }
 
+// text returns the source text the stub was built from.
 pub fn (s StubBase) text() string {
 	return s.text
 }
 
+// receiver returns the receiver text recorded for a method stub, or an empty string for other kinds.
 pub fn (s StubBase) receiver() string {
 	return s.receiver
 }
 
+// text_range returns the range of the element's name in the source file.
 pub fn (s StubBase) text_range() TextRange {
 	return s.identifier_text_range
 }
@@ -228,6 +237,7 @@ fn (s &StubBase) next_sibling() ?&StubElement {
 	return s.stub_list.next_sibling(s.id)
 }
 
+// children_stubs returns the stubs declared directly under this one, in source order.
 pub fn (s &StubBase) children_stubs() []StubElement {
 	return s.stub_list.get_children_stubs(s.id)
 }

@@ -15,6 +15,7 @@ mut:
 	data  map[string]PsiElement
 }
 
+// get returns the resolve target cached for the element, or none when nothing is cached for it.
 pub fn (t &ResolveCache) get(element PsiElement) ?PsiElement {
 	t.mutex.@rlock()
 	defer {
@@ -25,6 +26,7 @@ pub fn (t &ResolveCache) get(element PsiElement) ?PsiElement {
 	return t.data[fingerprint] or { return none }
 }
 
+// put caches the resolve target for the element and returns that same target.
 pub fn (mut t ResolveCache) put(element PsiElement, result PsiElement) PsiElement {
 	t.mutex.@lock()
 	defer {
@@ -36,6 +38,7 @@ pub fn (mut t ResolveCache) put(element PsiElement, result PsiElement) PsiElemen
 	return result
 }
 
+// clear drops every cached entry, so later lookups resolve from source again.
 pub fn (mut t ResolveCache) clear() {
 	t.mutex.@lock()
 	defer {

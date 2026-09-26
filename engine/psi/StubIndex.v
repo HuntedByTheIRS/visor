@@ -41,6 +41,7 @@ pub mut:
 	types_by_modules [count_stub_index_location_keys]map[string][]PsiElement
 }
 
+// new_stubs_index builds an index over sinks and fills it from them.
 pub fn new_stubs_index(sinks []StubIndexSink) &StubIndex {
 	mut index := &StubIndex{
 		sinks:           sinks
@@ -71,11 +72,13 @@ pub fn new_stubs_index(sinks []StubIndexSink) &StubIndex {
 	return index
 }
 
+// sub_indexes_from_sink records the sink's module and file mappings without indexing its data.
 pub fn (mut s StubIndex) sub_indexes_from_sink(sink StubIndexSink) {
 	unsafe { s.module_to_files[sink.stub_list.module_fqn] << sink }
 	s.file_to_module[sink.stub_list.path] = sink.stub_list.module_fqn
 }
 
+// update_index_from_sink adds the stubs of one sink to the index.
 pub fn (mut s StubIndex) update_index_from_sink(sink StubIndexSink) {
 	element_type := StubbedElementType{}
 	s.sub_indexes_from_sink(sink)
@@ -132,6 +135,7 @@ pub fn (mut s StubIndex) update_index_from_sink(sink StubIndexSink) {
 	}
 }
 
+// update_stubs_index replaces the sinks and rebuilds the workspace index after workspace changes.
 pub fn (mut s StubIndex) update_stubs_index(changed_sinks []StubIndexSink, all_sinks []StubIndexSink) {
 	loglib.log_one(.info, 'Updating stubs index...')
 	loglib.log_one(.info, 'Changed files: ${changed_sinks.len}')
@@ -221,6 +225,7 @@ pub fn (s &StubIndex) get_all_elements_from_by_key(from StubIndexLocationKind, k
 	return elements
 }
 
+// get_all_elements_from_file returns the elements the index holds for the given file.
 pub fn (s &StubIndex) get_all_elements_from_file(file string) []PsiElement {
 	mut elements := []PsiElement{cap: 20}
 	for sink in s.sinks {
@@ -268,10 +273,12 @@ pub fn (s &StubIndex) get_all_declarations_from_module(module_fqn string, only_t
 	return []
 }
 
+// get_all_sinks_from_module returns every sink that belongs to the module.
 pub fn (s &StubIndex) get_all_sinks_from_module(module_fqn string) []StubIndexSink {
 	return s.module_to_files[module_fqn] or { return []StubIndexSink{} }
 }
 
+// get_all_sink_depends_on returns the workspace sinks that import the module.
 pub fn (s &StubIndex) get_all_sink_depends_on(module_fqn string) []StubIndexSink {
 	mut sinks := []StubIndexSink{cap: 10}
 	for sink in s.sinks {
@@ -288,6 +295,7 @@ pub fn (s &StubIndex) get_all_sink_depends_on(module_fqn string) []StubIndexSink
 	return sinks
 }
 
+// get_sink_for_file returns the sink indexed for the given file, if it is known.
 pub fn (s &StubIndex) get_sink_for_file(file string) ?StubIndexSink {
 	for sink in s.sinks {
 		if sink.stub_list.path == file {
@@ -311,6 +319,7 @@ pub fn (s &StubIndex) get_elements_by_name(key StubIndexKey, name string) []PsiE
 	return elements
 }
 
+// get_elements_from_by_name returns the definitions stored under name in one index location.
 pub fn (s &StubIndex) get_elements_from_by_name(from StubIndexLocationKind, key StubIndexKey, name string) []PsiElement {
 	mut elements := []PsiElement{cap: 5}
 	data := s.data[from]
@@ -351,6 +360,7 @@ pub fn (s &StubIndex) get_module_root(module_fqn string) string {
 	return os.dir(first.stub_list.path)
 }
 
+// get_modules_by_name returns the modules matching the given name.
 pub fn (s &StubIndex) get_modules_by_name(name string) []PsiElement {
 	mut elements := []PsiElement{cap: 5}
 
@@ -390,6 +400,7 @@ mut:
 	psis  []PsiElement
 }
 
+// find_real_module_fqn resolves a module name to the full name it is known by.
 pub fn (s &StubIndex) find_real_module_fqn(name string) string {
 	workspace_idx := int(StubIndexLocationKind.workspace)
 	workspace_modules := s.all_elements_by_modules[workspace_idx]

@@ -8,6 +8,7 @@ pub struct ArrayCreation {
 	is_fixed bool
 }
 
+// expressions returns the elements of the array literal.
 pub fn (n ArrayCreation) expressions() []PsiElement {
 	children := n.children()
 	return children.filter(it.element_type() != .unknown)

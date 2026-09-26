@@ -11,10 +11,12 @@ pub struct GenericParameters {
 
 fn (_ &GenericParameters) stub() {}
 
+// parameters returns the generic parameter elements.
 pub fn (n &GenericParameters) parameters() []PsiElement {
 	return n.find_children_by_type_or_stub(.generic_parameter)
 }
 
+// text_presentation returns the parameters as written in source, such as `[T, U]`, or an empty string when there are none.
 pub fn (n &GenericParameters) text_presentation() string {
 	parameters := n.parameters()
 	if parameters.len == 0 {
@@ -34,6 +36,7 @@ pub fn (n &GenericParameters) text_presentation() string {
 	return sb.str()
 }
 
+// parameter_names returns the names of the generic parameters, or an empty list when there are none.
 pub fn (n &GenericParameters) parameter_names() []string {
 	parameters := n.parameters()
 	if parameters.len == 0 {

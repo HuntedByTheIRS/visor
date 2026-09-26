@@ -56,6 +56,7 @@ pub fn (m &Message) id_key() string {
 	return id_key(m.id)
 }
 
+// null_value returns a JSON null as a json2.Any.
 pub fn null_value() json2.Any {
 	return json2.Any(json2.Null{})
 }
@@ -206,6 +207,7 @@ pub fn as_array(value json2.Any) ?[]json2.Any {
 	return none
 }
 
+// encode_result builds a successful JSON-RPC response for the given id.
 pub fn encode_result(id json2.Any, result json2.Any) string {
 	mut out := map[string]json2.Any{}
 	out['jsonrpc'] = json2.Any(jsonrpc_version)
@@ -214,6 +216,7 @@ pub fn encode_result(id json2.Any, result json2.Any) string {
 	return json2.encode(out)
 }
 
+// encode_error builds a JSON-RPC error response for the given id.
 pub fn encode_error(id json2.Any, code int, message string) string {
 	mut body := map[string]json2.Any{}
 	body['code'] = json2.Any(code)
@@ -225,6 +228,7 @@ pub fn encode_error(id json2.Any, code int, message string) string {
 	return json2.encode(out)
 }
 
+// encode_request builds a JSON-RPC request frame.
 pub fn encode_request(id int, method string, params json2.Any) string {
 	mut out := map[string]json2.Any{}
 	out['jsonrpc'] = json2.Any(jsonrpc_version)
@@ -234,6 +238,7 @@ pub fn encode_request(id int, method string, params json2.Any) string {
 	return json2.encode(out)
 }
 
+// encode_notification builds a JSON-RPC notification, leaving out null params.
 pub fn encode_notification(method string, params json2.Any) string {
 	mut out := map[string]json2.Any{}
 	out['jsonrpc'] = json2.Any(jsonrpc_version)

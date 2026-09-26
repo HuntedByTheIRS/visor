@@ -29,12 +29,14 @@ fn (_ &UnknownType) module_name() string {
 	return ''
 }
 
+// accept offers the type to the visitor; an unknown type has nothing nested inside it to visit further.
 pub fn (s &UnknownType) accept(mut visitor TypeVisitor) {
 	if !visitor.enter(s) {
 		return
 	}
 }
 
+// substitute_generics returns the type unchanged, since an unknown type carries no generic parameters.
 pub fn (s &UnknownType) substitute_generics(name_map map[string]Type) Type {
 	return s
 }

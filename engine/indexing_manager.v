@@ -11,6 +11,7 @@ pub mut:
 	stub_index psi.StubIndex
 }
 
+// IndexingManager.new creates an indexing manager with a fresh indexer.
 pub fn IndexingManager.new() &IndexingManager {
 	indexer := new_indexer()
 	return &IndexingManager{
@@ -18,22 +19,26 @@ pub fn IndexingManager.new() &IndexingManager {
 	}
 }
 
+// setup_empty_indexes installs an empty stub index and makes it the global one.
 pub fn (mut a IndexingManager) setup_empty_indexes() {
 	a.stub_index = psi.new_stubs_index([])
 	stubs_index = a.stub_index
 }
 
+// setup_stub_indexes builds a stub index from the current roots and makes it the global one.
 pub fn (mut a IndexingManager) setup_stub_indexes() {
 	mut sinks := a.all_sinks()
 	a.stub_index = psi.new_stubs_index(sinks)
 	stubs_index = a.stub_index
 }
 
+// update_stub_indexes_from_sinks refreshes the global stub index for the given sinks.
 pub fn (mut a IndexingManager) update_stub_indexes_from_sinks(changed_sinks []psi.StubIndexSink) {
 	all_sinks := a.all_sinks()
 	stubs_index.update_stubs_index(changed_sinks, all_sinks)
 }
 
+// update_stub_indexes refreshes the global stub index for the given files, looking each sink up by path.
 pub fn (mut a IndexingManager) update_stub_indexes(changed_files []&psi.PsiFile) {
 	all_sinks := a.all_sinks()
 	mut changed_sinks := []psi.StubIndexSink{cap: changed_files.len}

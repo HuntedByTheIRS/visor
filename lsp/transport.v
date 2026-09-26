@@ -8,6 +8,7 @@ import os
 // frame leaves the client waiting for bytes that never come.
 pub struct StdoutSink {}
 
+// send writes one framed message to standard output, blocking until the whole frame is out.
 pub fn (mut s StdoutSink) send(message string) {
 	os.fd_write(1, format_frame(message))
 }

@@ -24,7 +24,7 @@ mut:
 	binding_parser &bindings.Parser[bindings.NodeType] = unsafe { nil }
 }
 
-// new creates a new Parser instance.
+// Parser.new creates a new Parser instance.
 pub fn Parser.new() &Parser {
 	mut bp := bindings.new_parser[bindings.NodeType](bindings.type_factory)
 	bp.set_language(bindings.language)

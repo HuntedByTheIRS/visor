@@ -9,10 +9,12 @@ pub struct Signature {
 	PsiElementImpl
 }
 
+// get_type returns the function type this signature describes, or the unknown type when it cannot be built.
 pub fn (s &Signature) get_type() types.Type {
 	return infer_type(PsiElement(s))
 }
 
+// parameters returns the value and type parameters of the signature.
 pub fn (n Signature) parameters() []PsiElement {
 	mut parameters := []PsiElement{}
 	if list := n.find_child_by_type_or_stub(.parameter_list) {
@@ -24,6 +26,7 @@ pub fn (n Signature) parameters() []PsiElement {
 	return parameters
 }
 
+// result returns the declared return type, or none when the signature has none.
 pub fn (n Signature) result() ?PsiElement {
 	last := n.last_child_or_stub()?
 	if last is PlainType {

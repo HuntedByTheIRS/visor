@@ -27,6 +27,7 @@ pub:
 	raw map[string]json2.Any
 }
 
+// new_client_capabilities builds a view over the capability payload from initialize.
 pub fn new_client_capabilities(value json2.Any) ClientCapabilities {
 	obj := as_object(value) or { map[string]json2.Any{} }
 	return ClientCapabilities{

@@ -9,6 +9,7 @@ pub struct StaticReceiver {
 	PsiElementImpl
 }
 
+// is_public always returns true: a static receiver has no visibility modifier of its own.
 pub fn (_ &StaticReceiver) is_public() bool {
 	return true
 }
@@ -26,6 +27,7 @@ fn (r &StaticReceiver) identifier() ?PsiElement {
 	return r.find_child_by_type(.identifier)
 }
 
+// name returns the name of the type the receiver belongs to.
 pub fn (r &StaticReceiver) name() string {
 	if stub := r.get_stub() {
 		return stub.name
@@ -35,6 +37,7 @@ pub fn (r &StaticReceiver) name() string {
 	return identifier.get_text()
 }
 
+// get_type returns the type named by the receiver.
 pub fn (r &StaticReceiver) get_type() types.Type {
 	return infer_type(r.first_child())
 }

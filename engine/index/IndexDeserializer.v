@@ -11,12 +11,14 @@ mut:
 	d Deserializer
 }
 
+// new_index_deserializer returns a deserializer that reads an index from the given bytes.
 pub fn new_index_deserializer(data []u8) IndexDeserializer {
 	return IndexDeserializer{
 		d: new_deserializer(data)
 	}
 }
 
+// deserialize_index reads a whole index, returning an error when the stored version differs from the expected one.
 pub fn (mut d IndexDeserializer) deserialize_index(expected_version string) !Index {
 	version := d.d.read_string()
 	if version != expected_version {
@@ -37,6 +39,7 @@ pub fn (mut d IndexDeserializer) deserialize_index(expected_version string) !Ind
 	}
 }
 
+// deserialize_file_indexes reads the per-file indexes and keys them by file path.
 pub fn (mut d IndexDeserializer) deserialize_file_indexes() map[string]FileIndex {
 	len := d.d.read_int()
 	mut file_indexes := map[string]FileIndex{}
@@ -47,6 +50,7 @@ pub fn (mut d IndexDeserializer) deserialize_file_indexes() map[string]FileIndex
 	return file_indexes
 }
 
+// deserialize_file_index reads one file index, including its stub list and stub index sink.
 pub fn (mut d IndexDeserializer) deserialize_file_index() FileIndex {
 	kind := unsafe { IndexingRootKind(d.d.read_u8()) }
 	file_last_modified := d.d.read_i64()
@@ -62,6 +66,7 @@ pub fn (mut d IndexDeserializer) deserialize_file_index() FileIndex {
 	}
 }
 
+// deserialize_stub_index_sink reads the name indexes of one file and rebinds them to the given stub list.
 pub fn (mut d IndexDeserializer) deserialize_stub_index_sink(stub_list &psi.StubList, kind IndexingRootKind) &psi.StubIndexSink {
 	len := d.d.read_int()
 	mut sink := &psi.StubIndexSink{
@@ -82,6 +87,7 @@ pub fn (mut d IndexDeserializer) deserialize_stub_index_sink(stub_list &psi.Stub
 	return sink
 }
 
+// deserialize_stub_index_sink_map reads one index bucket, mapping the indexed string to the stub ids recorded for it.
 pub fn (mut d IndexDeserializer) deserialize_stub_index_sink_map() map[string][]psi.StubId {
 	len := d.d.read_int()
 	mut sink_map := map[string][]psi.StubId{}
@@ -97,6 +103,7 @@ pub fn (mut d IndexDeserializer) deserialize_stub_index_sink_map() map[string][]
 	return sink_map
 }
 
+// deserialize_stub_list reads the stubs of a file and builds the stub list that holds them.
 pub fn (mut d IndexDeserializer) deserialize_stub_list() &psi.StubList {
 	filepath := d.d.read_string()
 	module_fqn := d.d.read_string()
@@ -136,6 +143,7 @@ pub fn (mut d IndexDeserializer) deserialize_stub_list() &psi.StubList {
 	return list
 }
 
+// deserialize_stub reads one stub, including its comment and the text ranges of its identifier and declaration.
 pub fn (mut d IndexDeserializer) deserialize_stub() &psi.StubBase {
 	text := d.d.read_string()
 	comment := d.d.read_string()

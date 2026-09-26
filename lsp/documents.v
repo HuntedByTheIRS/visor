@@ -60,6 +60,8 @@ pub mut:
 	changes_applied int
 }
 
+// open_document stores the buffer from a didOpen. Opening a document that is
+// already open is counted, and the newer text wins.
 pub fn (mut ds DocumentStore) open_document(item TextDocumentItem) {
 	if item.uri in ds.documents {
 		ds.duplicate_opens++
@@ -126,6 +128,7 @@ pub fn (mut ds DocumentStore) apply_changes(uri string, version int, changes []C
 	return doc
 }
 
+// get returns the stored buffer for uri, or none when it is not open.
 pub fn (ds &DocumentStore) get(uri string) ?TextDocument {
 	if uri !in ds.documents {
 		return none
@@ -133,14 +136,17 @@ pub fn (ds &DocumentStore) get(uri string) ?TextDocument {
 	return ds.documents[uri]
 }
 
+// is_open reports whether uri has a stored buffer.
 pub fn (ds &DocumentStore) is_open(uri string) bool {
 	return uri in ds.documents
 }
 
+// count returns the number of open buffers.
 pub fn (ds &DocumentStore) count() int {
 	return ds.documents.len
 }
 
+// uris returns the uri of every open buffer.
 pub fn (ds &DocumentStore) uris() []string {
 	return ds.documents.keys()
 }

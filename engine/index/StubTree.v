@@ -22,6 +22,7 @@ pub struct StubTree {
 	root &psi.StubBase
 }
 
+// print writes the stub tree to the trace log.
 pub fn (tree &StubTree) print() {
 	mut sb := strings.new_builder(100)
 	mut p := StubTreePrinter{
@@ -31,6 +32,7 @@ pub fn (tree &StubTree) print() {
 	loglib.trace(sb.str())
 }
 
+// print_to writes the stub tree into sb.
 pub fn (tree &StubTree) print_to(mut sb strings.Builder) {
 	mut p := StubTreePrinter{
 		sb: unsafe { &sb }
@@ -38,6 +40,7 @@ pub fn (tree &StubTree) print_to(mut sb strings.Builder) {
 	p.print_stub(tree.root, 0)
 }
 
+// get_imported_modules returns the paths of the modules the file imports.
 pub fn (tree &StubTree) get_imported_modules() []string {
 	mut result := []string{}
 	children := tree.root.children_stubs()
@@ -57,6 +60,7 @@ pub fn (tree &StubTree) get_imported_modules() []string {
 	return result
 }
 
+// build_stub_tree builds the stub tree of file, resolving module names against indexing_root.
 pub fn build_stub_tree(file &psi.PsiFile, indexing_root string) &StubTree {
 	mut walker := psi.new_tree_walker(file.tree.root_node())
 	defer { walker.free() }
@@ -117,6 +121,7 @@ struct NodeInfo {
 	parent &psi.StubBase
 }
 
+// build_stub_tree_iterative builds the stub tree without recursing, reusing nodes as the work stack.
 pub fn build_stub_tree_iterative(file &psi.PsiFile, mut nodes []NodeInfo) &StubTree {
 	root := file.root()
 	stub_root := psi.new_root_stub(file.path())
@@ -160,6 +165,7 @@ mut:
 	sb &strings.Builder
 }
 
+// print_stub writes one stub at the given indent depth, then recurses into its children.
 pub fn (mut p StubTreePrinter) print_stub(stub psi.StubElement, indent int) {
 	for i := 0; i < indent; i++ {
 		p.sb.write_string('  ')

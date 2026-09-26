@@ -8,6 +8,7 @@ pub:
 	module_name string
 }
 
+// module_name returns the module the type belongs to.
 @[markused]
 pub fn (s &BaseType) module_name() string {
 	return s.module_name

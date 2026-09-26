@@ -11,6 +11,7 @@ pub mut:
 	data map[string]FileIndex
 }
 
+// get_sinks returns the index sink of every file the cache holds.
 pub fn (p &PerFileIndex) get_sinks() []psi.StubIndexSink {
 	mut res := []psi.StubIndexSink{cap: p.data.len}
 	for _, cache in p.data {
@@ -21,6 +22,8 @@ pub fn (p &PerFileIndex) get_sinks() []psi.StubIndexSink {
 	return res
 }
 
+// rename_file moves a file's cache to the new path and returns it. It returns none
+// when the two paths are equal or when the cache does not hold the old one.
 pub fn (mut p PerFileIndex) rename_file(old string, new string) ?FileIndex {
 	if old == new {
 		return none
@@ -35,6 +38,8 @@ pub fn (mut p PerFileIndex) rename_file(old string, new string) ?FileIndex {
 	return none
 }
 
+// remove_file drops a file's cache and returns it, or none when the cache does not
+// hold the file.
 pub fn (mut p PerFileIndex) remove_file(path string) ?FileIndex {
 	if mut cache := p.data[path] {
 		p.data.delete(path)

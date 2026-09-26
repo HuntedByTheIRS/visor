@@ -48,6 +48,7 @@ fn (v VarDeclaration) initializer_of(def VarDefinition) ?PsiElement {
 	return expressions[index]
 }
 
+// vars returns the variable definitions declared here, including those wrapped in a mut expression.
 pub fn (v VarDeclaration) vars() []PsiElement {
 	first_child := v.first_child() or { return [] }
 	mut vars := []PsiElement{}

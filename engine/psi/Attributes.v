@@ -9,6 +9,7 @@ pub struct Attributes {
 
 fn (_ &Attributes) stub() {}
 
+// attributes returns the attribute nodes attached to the element.
 pub fn (n Attributes) attributes() []PsiElement {
 	return n.find_children_by_type_or_stub(.attribute)
 }

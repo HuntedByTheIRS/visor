@@ -13,10 +13,12 @@ pub struct EnumFieldDeclaration {
 	PsiElementImpl
 }
 
+// is_public always returns true: enum fields have no visibility of their own.
 pub fn (_ &EnumFieldDeclaration) is_public() bool {
 	return true
 }
 
+// doc_comment returns the comment above the field, with the leading slashes stripped.
 pub fn (f &EnumFieldDeclaration) doc_comment() string {
 	if stub := f.get_stub() {
 		return stub.comment
@@ -29,10 +31,12 @@ pub fn (f &EnumFieldDeclaration) doc_comment() string {
 	return extract_doc_comment(f)
 }
 
+// identifier returns the name node of the field, or none when it has no name.
 pub fn (f &EnumFieldDeclaration) identifier() ?PsiElement {
 	return f.find_child_by_type(.identifier)
 }
 
+// identifier_text_range returns the range of the field's name, or an empty range when it has no name.
 pub fn (f EnumFieldDeclaration) identifier_text_range() TextRange {
 	if stub := f.get_stub() {
 		return stub.identifier_text_range
@@ -42,6 +46,7 @@ pub fn (f EnumFieldDeclaration) identifier_text_range() TextRange {
 	return identifier.text_range()
 }
 
+// name returns the field's name.
 pub fn (f &EnumFieldDeclaration) name() string {
 	if stub := f.get_stub() {
 		return stub.name
@@ -51,17 +56,20 @@ pub fn (f &EnumFieldDeclaration) name() string {
 	return identifier.get_text()
 }
 
+// get_type returns the type of the enum the field belongs to, or unknown_type when the field has no owner.
 pub fn (f &EnumFieldDeclaration) get_type() types.Type {
 	owner := f.owner() or { return types.unknown_type }
 	return owner.get_type()
 }
 
+// fingerprint is the cache key for the field: its file, start point and owner-qualified name.
 pub fn (f &EnumFieldDeclaration) fingerprint() string {
 	owner := f.owner() or { return '' }
 	file := f.containing_file() or { return '' }
 	return '${file.path}:${f.node.start_point()}${owner.name()}.${f.name()}'
 }
 
+// value returns the value expression written after the field, or none when the field takes the next value.
 pub fn (f &EnumFieldDeclaration) value() ?PsiElement {
 	if stub := f.get_stub() {
 		if stub.additional.len == 0 {
@@ -82,6 +90,7 @@ pub fn (f &EnumFieldDeclaration) value() ?PsiElement {
 	return f.find_child_by_name('value')
 }
 
+// owner returns the enum the field is declared in, or none when it is not inside one.
 pub fn (f &EnumFieldDeclaration) owner() ?&EnumDeclaration {
 	if stub := f.get_stub() {
 		if parent := stub.parent_of_type(.enum_declaration) {
@@ -106,6 +115,8 @@ pub fn (f &EnumFieldDeclaration) owner() ?&EnumDeclaration {
 	return none
 }
 
+// value_presentation renders the value the way a user reads it: zero-padded
+// binary for a flag enum, decimal otherwise, with the decimal value on request.
 pub fn (f &EnumFieldDeclaration) value_presentation(with_dec_value bool) string {
 	owner := f.owner() or { return '' }
 	count_fields := owner.fields().len
@@ -123,6 +134,7 @@ pub fn (f &EnumFieldDeclaration) value_presentation(with_dec_value bool) string 
 	return value.str()
 }
 
+// get_value returns the field's numeric value, memoized by fingerprint.
 pub fn (f &EnumFieldDeclaration) get_value() i64 {
 	fingerprint := f.fingerprint()
 	if value := enum_fields_cache[fingerprint] {
@@ -214,4 +226,5 @@ fn (_ EnumFieldDeclaration) add_padding(value string, size int) string {
 	return '0'.repeat(size - len) + value
 }
 
+// stub is the marker method that lets the field be rebuilt from an index stub.
 pub fn (_ EnumFieldDeclaration) stub() {}

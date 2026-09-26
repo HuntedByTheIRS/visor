@@ -7,6 +7,7 @@ pub struct ValueAttribute {
 	PsiElementImpl
 }
 
+// value returns the attribute name this element holds.
 pub fn (n ValueAttribute) value() string {
 	return n.get_text()
 }

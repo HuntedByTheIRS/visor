@@ -29,6 +29,7 @@ pub enum IndexingRootKind as u8 {
 	workspace
 }
 
+// readable_name returns a human-readable name for the root kind.
 pub fn (k IndexingRootKind) readable_name() string {
 	return match k {
 		.standard_library { 'Standard Library' }
@@ -70,6 +71,7 @@ fn (mut i IndexingRoot) cache_file() string {
 	return os.join_path(i.cache_dir, i.cache_file)
 }
 
+// load_index reads the index from its cache file, returning an error when the cache is missing, unreadable, or written by another version.
 pub fn (mut i IndexingRoot) load_index() ! {
 	now := time.now()
 	if !os.exists(i.cache_file()) {
@@ -100,6 +102,7 @@ pub fn (mut i IndexingRoot) load_index() ! {
 	loglib.info('Loaded index in ${time.since(now)}')
 }
 
+// save_index writes the index to its cache file unless saving is not needed or has been turned off.
 pub fn (mut i IndexingRoot) save_index() ! {
 	if !i.need_save || i.no_save {
 		return
@@ -136,6 +139,7 @@ fn (mut _ IndexingRoot) need_index(path string) bool {
 		&& !path.ends_with('.js.v') && !path.contains('/.git/') && !path.ends_with('_test.v')
 }
 
+// index returns the index, loading it from cache when possible and building it from scratch otherwise.
 pub fn (mut i IndexingRoot) index() BuiltIndexStatus {
 	now := time.now()
 
@@ -181,6 +185,7 @@ pub fn (mut i IndexingRoot) index() BuiltIndexStatus {
 	return .from_scratch
 }
 
+// index_file parses one file and builds its stub tree and file index.
 pub fn (mut i IndexingRoot) index_file(path string, content string, mut p parser.Parser) !FileIndex {
 	last_modified := os.file_last_mod_unix(path)
 	res := p.parse_code(content)
@@ -217,6 +222,7 @@ pub fn (mut i IndexingRoot) index_file(path string, content string, mut p parser
 	return cache
 }
 
+// spawn_indexing_workers indexes every path in file_chan on a pool of worker threads and closes cache_chan when the pool finishes.
 pub fn (mut i IndexingRoot) spawn_indexing_workers(cache_chan chan FileIndex, file_chan chan string) {
 	mut wg := sync.new_waitgroup()
 	cpus := runtime.nr_cpus()
@@ -298,6 +304,7 @@ pub fn (mut i IndexingRoot) ensure_indexed() {
 	loglib.with_duration(time.since(now)).info('Reindexing finished')
 }
 
+// mark_as_dirty reindexes a file after its content changed and saves the index; paths outside this root are ignored.
 pub fn (mut i IndexingRoot) mark_as_dirty(filepath string, new_content string) ! {
 	if filepath !in i.index.per_file.data {
 		// file does not belong to this index
@@ -324,6 +331,7 @@ pub fn (mut i IndexingRoot) mark_as_dirty(filepath string, new_content string) !
 	}).info('Finished reindexing document')
 }
 
+// add_file indexes a newly created file, saves the index, and returns its file index.
 pub fn (mut i IndexingRoot) add_file(filepath string, content string) !FileIndex {
 	loglib.with_fields({
 		'uri': utils.path_to_uri(filepath)
@@ -350,6 +358,7 @@ pub fn (mut i IndexingRoot) add_file(filepath string, content string) !FileIndex
 	return res
 }
 
+// rename_file moves a file's index entry to its new path, saves the index, and returns the moved entry.
 pub fn (mut i IndexingRoot) rename_file(old string, new string) !FileIndex {
 	cache := i.index.per_file.rename_file(old, new) or {
 		return error('cannot find file index after rename, most likely rename was failed')
@@ -362,6 +371,7 @@ pub fn (mut i IndexingRoot) rename_file(old string, new string) !FileIndex {
 	return cache
 }
 
+// remove_file drops a file's index entry, saves the index, and returns the removed entry.
 pub fn (mut i IndexingRoot) remove_file(path string) !FileIndex {
 	cache := i.index.per_file.remove_file(path) or {
 		return error('cannot find file index after remove, most likely remove was failed')
@@ -374,6 +384,7 @@ pub fn (mut i IndexingRoot) remove_file(path string) !FileIndex {
 	return cache
 }
 
+// contains reports whether the path starts with this root's directory.
 pub fn (i &IndexingRoot) contains(path string) bool {
 	return path.starts_with(i.root)
 }

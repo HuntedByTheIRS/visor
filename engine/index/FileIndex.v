@@ -27,6 +27,7 @@ pub mut:
 	sink &psi.StubIndexSink = unsafe { nil }
 }
 
+// path returns the indexed file's path, or an empty string when the file holds no stubs.
 pub fn (f &FileIndex) path() string {
 	if f.stub_list == unsafe { nil } {
 		return ''

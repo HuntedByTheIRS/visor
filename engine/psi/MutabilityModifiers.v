@@ -7,6 +7,7 @@ pub struct MutabilityModifiers {
 	PsiElementImpl
 }
 
+// is_mutable reports whether the modifiers contain a mut.
 pub fn (n MutabilityModifiers) is_mutable() bool {
 	children := n.children()
 	return children.any(it.get_text() == 'mut')

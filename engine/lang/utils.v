@@ -64,6 +64,7 @@ pub fn get_zero_value_for(typ types.Type) string {
 	}
 }
 
+// is_same_module reports whether both elements belong to the same module.
 pub fn is_same_module(context psi.PsiElement, element psi.PsiElement) bool {
 	context_file := context.containing_file() or { return false }
 	element_file := element.containing_file() or { return false }

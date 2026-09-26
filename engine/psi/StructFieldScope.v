@@ -7,6 +7,7 @@ pub struct StructFieldScope {
 	PsiElementImpl
 }
 
+// is_mutable_public reports whether the field block is declared mut and whether it is declared pub.
 pub fn (n StructFieldScope) is_mutable_public() (bool, bool) {
 	text := n.get_text()
 	return text.contains('mut'), text.contains('pub')

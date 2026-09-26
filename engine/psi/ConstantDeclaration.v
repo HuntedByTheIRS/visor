@@ -7,6 +7,7 @@ pub struct ConstantDeclaration {
 	PsiElementImpl
 }
 
+// constants returns the constant definitions in the declaration.
 pub fn (n ConstantDeclaration) constants() []PsiElement {
 	return n.find_children_by_type(.const_definition)
 }

@@ -7,11 +7,13 @@ pub struct UnaryExpression {
 	PsiElementImpl
 }
 
+// operator returns the operator text of the expression.
 pub fn (n UnaryExpression) operator() string {
 	operator_element := n.find_child_by_name('operator') or { return '' }
 	return operator_element.get_text()
 }
 
+// expression returns the operand of the expression, or none.
 pub fn (n UnaryExpression) expression() ?PsiElement {
 	return n.find_child_by_name('operand')
 }

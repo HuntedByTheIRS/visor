@@ -64,6 +64,8 @@ pub enum StubType as u8 {
 	embedded_definition
 }
 
+// node_type_to_stub_type maps a tree-sitter node type onto the stub type built from
+// it. A node type with no stub of its own maps to root.
 pub fn node_type_to_stub_type(typ bindings.NodeType) StubType {
 	return match typ {
 		.function_declaration { .function_declaration }
@@ -125,6 +127,9 @@ pub fn node_type_to_stub_type(typ bindings.NodeType) StubType {
 
 pub struct StubbedElementType {}
 
+// index_stub records the occurrences a stub contributes to the index. Stubs from a
+// _test.v file and functions named test_* are skipped, since neither is reachable
+// from another file.
 pub fn (_ &StubbedElementType) index_stub(stub &StubBase, mut sink IndexSink) {
 	if stub.stub_list.path.ends_with('_test.v') {
 		return
@@ -202,6 +207,9 @@ pub fn (_ &StubbedElementType) index_stub(stub &StubBase, mut sink IndexSink) {
 	}
 }
 
+// create_psi builds the PSI element a stub stands for, so a handler that expects an
+// AST node also works on a stub. Node types with no element of their own fall back
+// to the plain element node.
 pub fn (_ &StubbedElementType) create_psi(stub &StubBase) ?PsiElement {
 	stub_type := stub.stub_type
 	base_psi := new_psi_node_from_stub(stub.id, stub.stub_list)
@@ -389,6 +397,8 @@ pub fn (_ &StubbedElementType) create_psi(stub &StubBase) ?PsiElement {
 	return base_psi
 }
 
+// get_receiver_type returns the receiver type of a method, with a leading & and any
+// generic arguments dropped. An element that is not a method returns an empty string.
 pub fn (_ &StubbedElementType) get_receiver_type(element PsiNamedElement) string {
 	typ := if element is FunctionOrMethodDeclaration {
 		receiver := element.receiver() or { return '' }
@@ -410,6 +420,9 @@ pub fn (_ &StubbedElementType) get_receiver_type(element PsiNamedElement) string
 	return text
 }
 
+// create_stub builds the stub of one element, carrying the name, the ranges and the
+// doc comment the index and the PSI layer need. An element with no stub type of its
+// own returns none.
 pub fn (s &StubbedElementType) create_stub(element PsiElement, parent_stub &StubBase, module_fqn string) ?&StubBase {
 	if element is FunctionOrMethodDeclaration {
 		text_range := element.text_range()
@@ -623,6 +636,8 @@ pub:
 	additional   string
 }
 
+// declaration_stub builds the stub of a named declaration, taking the name, the
+// ranges and the doc comment from the element itself.
 @[inline]
 pub fn declaration_stub(element PsiNamedElement, parent_stub &StubElement, stub_type StubType, params StubParams) ?&StubBase {
 	text_range := (element as PsiElement).text_range()
@@ -640,6 +655,8 @@ pub:
 	include_text bool = true
 }
 
+// text_based_stub builds the stub of an element that has no name of its own, so the
+// text range is all it carries.
 @[inline]
 pub fn text_based_stub(element PsiElement, parent_stub &StubElement, stub_type StubType, params TestStubParams) ?&StubBase {
 	text_range := element.text_range()
@@ -648,6 +665,7 @@ pub fn text_based_stub(element PsiElement, parent_stub &StubElement, stub_type S
 	)
 }
 
+// node_is_type reports whether a tree-sitter node type names a type.
 @[inline]
 pub fn node_is_type(type_name bindings.NodeType) bool {
 	return type_name in [
