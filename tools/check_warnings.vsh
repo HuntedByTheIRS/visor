@@ -12,6 +12,8 @@ module main
 //            program directory alike. Without it, a directory holding no `main`
 //            module answers with an error about the missing `main` module and
 //            nothing else.
+//   programs `v -check` over every file in a directory that holds standalone
+//            programs, where one sweep per file is the only thing that works.
 //   tests    `v -check` over every `_test.v` file, which the package sweep
 //            skips: V ignores test files when it compiles a package.
 //   vet      `v vet .`: missing documentation, and the compiler's suggestions
@@ -39,6 +41,12 @@ const usage = 'usage: v run tools/check_warnings.vsh'
 // skipped_dirs holds the trees that are not compiled into anything: git's own
 // state, the local tooling state, and the test fixtures.
 const skipped_dirs = ['.git', '.omh', 'testdata']
+
+// program_dirs holds directories that are not modules: each `.v` file in them is
+// a program of its own, so sweeping the directory would collide on `main`. The
+// files are checked one at a time instead, and the directory sweep leaves them
+// alone.
+const program_dirs = ['tree_sitter_v/examples']
 
 // compiler is the V that built this script, so the gate checks the tree with
 // the same compiler the caller used.
@@ -147,7 +155,7 @@ fn sweep_dir(path string) string {
 	return '${compiler} -shared -check ${os.quoted_path(path)}'
 }
 
-fn sweep_test(path string) string {
+fn check_file(path string) string {
 	return '${compiler} -check ${os.quoted_path(path)}'
 }
 
@@ -197,10 +205,39 @@ fn main() {
 		exit(1)
 	}
 	for path in found.dirs {
+		if name(root, path) in program_dirs {
+			continue
+		}
 		gate.check('sweep ${name(root, path)}', sweep_dir(path))
 	}
+	for dir in program_dirs {
+		full := os.join_path(root, dir)
+		entries := os.ls(full) or {
+			gate.findings << Finding{
+				target: 'programs ${dir}'
+				output: 'could not list ${full}: ${err}'
+			}
+			continue
+		}
+		mut programs := []string{}
+		for entry in entries {
+			if entry.ends_with('.v') {
+				programs << os.join_path(full, entry)
+			}
+		}
+		programs.sort()
+		if programs.len == 0 {
+			gate.findings << Finding{
+				target: 'programs ${dir}'
+				output: 'no programs under ${full}'
+			}
+		}
+		for program in programs {
+			gate.check('program ${name(root, program)}', check_file(program))
+		}
+	}
 	for path in found.tests {
-		gate.check('tests ${name(root, path)}', sweep_test(path))
+		gate.check('tests ${name(root, path)}', check_file(path))
 	}
 	gate.check('vet', vet_cmd(root))
 	gate.check('build', '${compiler} -o ${os.quoted_path(os.join_path(os.temp_dir(), 'visor-check-warnings'))} ${os.quoted_path(root)}')
