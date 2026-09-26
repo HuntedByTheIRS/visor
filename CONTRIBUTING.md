@@ -56,6 +56,38 @@ much of the suite ran, and a run that prints no checks at all fails.
 CI pins two editors, 0.11.7 and 0.12.5. The token highlighter is started by a
 different call either side of 0.12, and both branches of that check get a run.
 
+## Installing into an editor
+
+`tools/install_lsp.vsh` is what a user runs: it builds the server, copies the
+client into a profile under a name of its own, and leaves a command on `PATH`
+that starts the editor with that profile, so the configuration someone already
+has keeps its own.
+
+```sh
+v run tools/install_lsp.vsh nvim          # or vim, or both
+v run tools/install_lsp.vsh all -n        # print the plan, write nothing
+v run tools/install_lsp.vsh vim --root /tmp/try --bin /tmp/visor
+```
+
+`--root` installs under another directory instead of `$HOME`, which is how a
+throwaway profile is made and how this runs in CI without touching a runner's
+home. `--name` renames the profile: it is the `NVIM_APPNAME` for Neovim and the
+`vimrc` for Vim, and it is the command that gets installed.
+
+The Vim profile carries its own copy of vim-lsp, cloned at install time, because
+Vim ships no language client. `--vim-lsp` points at a checkout instead of
+cloning one.
+
+Vim reads the generated `vimrc` *instead of* the one the user has, with `-u`, so
+nothing in a user's own Vim setup has to be edited for this to work.
+
+The one thing to know when testing a profile by hand: an install is only files
+until the editor loads them, and the client only starts on events a real session
+produces. In a batch editor, `User lsp_setup` has to be fired by hand (Vim
+reaches it from a `VimEnter` autocmd that batch mode skips), and a buffer
+rewritten by a script has had no text change, so the client asks for its
+highlighting tokens on the next one.
+
 ## The version
 
 `VERSION` holds the version and the binary embeds the file at build time, so it

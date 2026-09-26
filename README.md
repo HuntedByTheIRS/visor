@@ -144,8 +144,20 @@ plugin: it finds the server on `PATH` or through `$VISOR_BIN`, attaches a client
 to a V buffer, and starts no process until a V buffer opens. Its README carries
 the settings and the commands.
 
-A VS Code and VSCodium extension and a Vim configuration are planned after
-v0.1.0. Both will find the server themselves.
+`tools/install_lsp.vsh` writes that setup, and the Vim one beside it:
+
+```sh
+v run tools/install_lsp.vsh nvim    # or vim, or both
+```
+
+It builds the server, copies the client into a profile of its own, and leaves a
+command on `PATH` that starts the editor with that profile, so the setup you
+already have keeps its own. `--name` names the profile, `-n` prints the plan and
+writes nothing. Vim has no language client of its own, so that profile carries a
+vim-lsp checkout and a `vimrc` that registers the server with it.
+
+A VS Code and VSCodium extension is planned after v0.1.0. It will find the server
+itself.
 
 ## Contributing
 

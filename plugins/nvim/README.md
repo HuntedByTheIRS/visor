@@ -11,7 +11,17 @@ which the test checks rather than assumes.
 
 ## Install
 
-With a plugin manager that takes a directory:
+The installer in the repository writes this setup for you, into a profile of its
+own:
+
+```sh
+v run tools/install_lsp.vsh nvim
+```
+
+That builds the server, copies this plugin into the profile, and leaves a
+command on `PATH` that starts Neovim under it.
+
+By hand, with a plugin manager that takes a directory:
 
 ```lua
 { dir = '/path/to/visor/plugins/nvim' }
