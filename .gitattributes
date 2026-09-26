@@ -1,5 +1,23 @@
+# Line endings.
 * text=auto eol=lf
 *.bat eol=crlf
+
+# The languages GitHub counts for this tree. Linguist reads these attributes
+# from the repository, and paths are relative to the file they appear in, so
+# anything under a module directory carries that directory's name.
+#
+# Linguist guesses C++ or Objective-C for a header that reads like either one,
+# and it guessed C++ for the tree-sitter array header from a comment inside it
+# that mentions std::. Every header here is C: the vendored runtime, the ICU
+# tables it calls, and the grammar's own headers.
+*.h linguist-language=C
+
+# tree_sitter_v/src is tree-sitter output: the parser, the node types it
+# prints, and the headers the parser includes. Kept so the grammar builds, and
+# not counted as this project's C.
+tree_sitter_v/src/parser.c linguist-generated
+tree_sitter_v/src/node-types.json linguist-generated
+tree_sitter_v/src/tree_sitter/* linguist-generated
 
 *.v linguist-language=V
 *.vv linguist-language=V
