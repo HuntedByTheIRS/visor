@@ -14,6 +14,11 @@ fn (mut s Server) register_core() {
 	s.on('textDocument/didSave', handle_did_save)
 	s.on('workspace/didChangeConfiguration', handle_did_change_configuration)
 	s.on('workspace/didChangeWorkspaceFolders', handle_did_change_workspace_folders)
+	// Formatting is the first feature lane to land. It answers only when the
+	// startup probe found a compiler that formats, and the capability set says
+	// the same thing, so a client is never told to ask for something that would
+	// come back as an error.
+	s.on('textDocument/formatting', handle_formatting)
 	// The diag lane implements this. Until it lands the method answers with a
 	// request-failed error naming the lane, because an empty diagnostic list
 	// would read as a file with no problems.

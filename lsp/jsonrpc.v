@@ -248,3 +248,21 @@ pub fn encode_notification(method string, params json2.Any) string {
 	}
 	return json2.encode(out)
 }
+
+// encode_position builds the wire shape of a position. The numbers are the ones
+// the conversion from byte offsets produced, already counted in the code units
+// the client counts in.
+pub fn encode_position(position Position) json2.Any {
+	mut out := map[string]json2.Any{}
+	out['line'] = json2.Any(position.line)
+	out['character'] = json2.Any(position.character)
+	return json2.Any(out)
+}
+
+// encode_range builds the wire shape of a range.
+pub fn encode_range(range_ Range) json2.Any {
+	mut out := map[string]json2.Any{}
+	out['start'] = encode_position(range_.start)
+	out['end'] = encode_position(range_.end)
+	return json2.Any(out)
+}
