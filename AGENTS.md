@@ -9,7 +9,6 @@ wrong called out.
 ```sh
 v -o /tmp/visor .        # build
 v run tools/check_warnings.vsh   # warning gate, silent on a clean tree
-v run tools/update_ver.vsh 0.0.3 # version bump, carries the copies with it
 v fmt -verify .          # format gate, exit 0 or fail
 v test .                 # every module's tests, recurses into module dirs
 v test vtool/            # one module
@@ -41,6 +40,8 @@ module over those directories; v-analyzer's build fails on exactly that layout.
 - copy vls source. It is GPL-2.0 and visor is MIT. Read it to learn what modern
   editor support looks like, then write your own.
 - add a launcher, an updater, a second formatter, or a registry publish step.
+- bump the version. `tools/update_ver.vsh` is a release action a maintainer runs
+  when the tree is about to be tagged, and it belongs in a commit of its own.
 
 CI greps for the first two. Review catches the rest, so do not rely on CI.
 

@@ -3,8 +3,8 @@ module main
 // update_ver writes a new version into VERSION and carries the string to every
 // other place in the tree that spells the old one out.
 //
-//   v run tools/update_ver.vsh 0.0.3
-//   v run tools/update_ver.vsh 0.0.3 -n    # print the plan, write nothing
+//   v run tools/update_ver.vsh <new-version>
+//   v run tools/update_ver.vsh <new-version> -n   # print the plan, write nothing
 //
 // VERSION is the only source of truth: the binary embeds the file at build
 // time, and `visor --version` prints what it holds. Every other copy of that
@@ -13,9 +13,9 @@ module main
 // sends back. A doc that quotes a release number goes stale the same way.
 //
 // A copy is an exact match on the previous version, with one boundary rule: the
-// match cannot begin or end inside a number, so `0.0.2` is not found in
-// `0.0.20`. A `v` in front is fine, since `v0.0.2` is this version wearing the
-// prefix the docs prefer. Everything else that looks like a version stays
+// match cannot begin or end inside a number, so `1.2.3` is not found in
+// `1.2.34`. A `v` in front is fine: that is the same version wearing the prefix
+// the docs prefer. Everything else that looks like a version stays
 // where it is: `0.5.2` is the V compiler this tree needs, and `v0.1.0` is a
 // release ROADMAP.md plans for. Neither one moves when this one does.
 //

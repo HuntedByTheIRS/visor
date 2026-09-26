@@ -44,16 +44,19 @@ the `serverInfo` block the server sends back. `tools/update_ver.vsh` carries a
 bump to all of them.
 
 ```sh
-v run tools/update_ver.vsh 0.0.3     # write
-v run tools/update_ver.vsh 0.0.3 -n  # print the plan, write nothing
+v run tools/update_ver.vsh <new-version>     # write
+v run tools/update_ver.vsh <new-version> -n  # print the plan, write nothing
 ```
 
 A copy is found by exact match on the previous version, with a boundary rule:
-the match cannot begin or end inside a number, so `0.0.2` is not found in
-`0.0.20`. Numbers that mean something else stay where they are, `0.5.2` for the
+the match cannot begin or end inside a number, so `1.2.3` is not found in
+`1.2.34`. Numbers that mean something else stay where they are, `0.5.2` for the
 V release this tree needs and `v0.1.0` for the release `ROADMAP.md` plans. The
 tool also sets the `version` in `v.mod`, which declares a version of its own and
 had drifted behind `VERSION`.
+
+A bump is a release action. It lands in its own commit, at the point the tree is
+about to be tagged, rather than riding along with a feature.
 
 ## Layout
 
