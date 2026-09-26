@@ -20,10 +20,6 @@ Kept for the build:
 * `bindings/` - the V bindings, and the generator that turns node type data
   into the `NodeType` enum
 
-Kept for readers:
-
-* `test/corpus/` - the grammar's parse fixtures
-
 Dropped, because visor is a C and V tree: the Rust, JavaScript and lldb
 bindings, the npm and Nix packaging, and the editor and pkg-config files that
 served those bindings.
