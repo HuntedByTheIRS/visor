@@ -1,8 +1,10 @@
 # Security policy
 
-visor is pre-release. It builds and runs its command line, and it answers no
-language server requests yet, so the surface below is the one it is being built
-to have rather than one you can reach today.
+visor is pre-release. It builds, runs its command line, and answers the protocol
+core over stdio: `initialize`, the document and workspace notifications,
+`shutdown` and `exit`. No feature handler is wired yet, so most of the surface
+below is the one visor is being built to have rather than one you can reach
+today.
 
 ## Supported versions
 
@@ -39,11 +41,13 @@ reads the files in the workspace you opened. Anything that lets a workspace, a
 file being edited, or a compiler message make visor run a command you did not
 ask for is in scope.
 
-Worth reporting, once the features exist:
+Worth reporting:
 
 - a crafted buffer or file that makes visor execute something unexpected
 - a path outside the opened workspace being read or written
-- a diagnostic, hover or completion result that escapes the buffer it came from
+- a diagnostic, hover or completion result that escapes the buffer it came from.
+  None of those handlers is wired yet, and the diagnostics one is a stub until
+  the diagnostics lane lands.
 
 ## What is not ours
 
