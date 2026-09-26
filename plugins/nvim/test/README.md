@@ -1,0 +1,7 @@
+-- What this test connects to, and how it is run.
+--
+--   plugins/nvim/test/run.sh --bin /tmp/visor
+--
+-- It drives the plugin against a real server over stdio, in a headless editor.
+-- Nothing here mocks the protocol: the point is that an editor and the binary
+-- agree, which a friendlier test would not show.
