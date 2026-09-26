@@ -29,12 +29,12 @@ const usage = 'usage: v run tools/install_lsp.vsh <editor> [<editor>...] [flags]
 
 // editor_names are the editors this tool can install for. `all` stands for
 // every name in it.
-const editor_names = ['nvim']
+const editor_names = ['nvim', 'vim']
 
 // editor_planned are names this tool answers to and cannot install yet. They are
 // listed in the help because a user looking for them should get an answer, not
 // "unknown editor".
-const editor_planned = ['vim', 'code', 'codium']
+const editor_planned = ['code', 'codium']
 
 // marker sits in every file this tool writes. It is the difference between a
 // file a later run may replace and one that belongs to the user.
@@ -44,8 +44,7 @@ const marker = 'written by tools/install_lsp.vsh'
 // one the caller used.
 const compiler = @VEXE
 
-const flags_help = 'editors: nvim (all for every editor it installs; vim, code and codium are not
-implemented yet)
+const flags_help = 'editors: nvim, vim (all for both; code and codium are not implemented yet)
 flags:
   --name <name>        profile name, also the command it installs (default: visorvim)
   --bin <path>         where the server binary goes (default: <root>/.local/bin/visor)
@@ -305,12 +304,31 @@ fn shell_quote(path string) string {
 fn (mut plan Plan) editor(editor string, request &Request) ! {
 	match editor {
 		'nvim' { plan.nvim(request) or { return error(err.msg()) } }
+		'vim' { plan.vim(request) or { return error(err.msg()) } }
 		else {
 			if editor in editor_planned {
 				return error('${editor} is not implemented yet; this tool installs for ${editor_names.join(' and ')}')
 			}
 			return error('unknown editor "${editor}" (${editor_names.join(', ')} or all)')
 		}
+	}
+}
+
+// check_command_name refuses a name whose command already belongs to the other
+// editor. Both installs generate a marked file in the same place, so the marker
+// alone would let the second one replace the first without a word.
+fn check_command_name(request &Request, editor string) ! {
+	path := os.join_path(request.bin_dir, request.name)
+	if !os.exists(path) {
+		return
+	}
+	existing := os.read_file(path) or { return }
+	if !existing.contains(marker) {
+		return // run() already stops at a file this tool did not write
+	}
+	owner := if existing.contains('NVIM_APPNAME=') { 'nvim' } else { 'vim' }
+	if owner != editor {
+		return error('${path} is the ${owner} profile; install this one under another --name, or pass --force')
 	}
 }
 
@@ -334,6 +352,7 @@ fn (mut plan Plan) server(request &Request) ! {
 // Plan.nvim installs the Neovim profile: a copy of the client, a config that
 // loads it, and a command that starts Neovim under that name.
 fn (mut plan Plan) nvim(request &Request) ! {
+	check_command_name(request, 'nvim') or { return error(err.msg()) }
 	source := os.join_path(request.from, 'plugins', 'nvim')
 	client := os.join_path(request.config, 'plugins', 'visor')
 	for directory in ['lua', 'plugin'] {
@@ -395,6 +414,98 @@ fn nvim_command(request &Request) string {
 	mut text := '#!/bin/sh\n'
 	text += '# ${marker}: Neovim under the visor profile "${request.name}".\n'
 	text += 'exec env NVIM_APPNAME=${request.name} nvim "\$@"\n'
+	return text
+}
+
+// Plan.vim installs the Vim profile: a vim-lsp checkout beside the config, a
+// vimrc that registers the server with it, and a command that starts Vim with
+// that vimrc. Vim has no language client of its own, so the client is part of
+// the install.
+fn (mut plan Plan) vim(request &Request) ! {
+	check_command_name(request, 'vim') or { return error(err.msg()) }
+	mut client := request.vim_lsp
+	if client == '' {
+		client = os.join_path(request.config, 'vim-lsp')
+	}
+	client = os.real_path(expand_root(client))
+	if !os.exists(client) {
+		if request.vim_lsp != '' {
+			return error('${client} is not there; --vim-lsp takes a vim-lsp checkout')
+		}
+		plan.commands << Command{
+			line: 'git clone --depth 1 https://github.com/prabirshrestha/vim-lsp.git ${shell_quote(client)}'
+		}
+		plan.notes << 'cloning vim-lsp for the profile (it is VimScript, and Vim ships no client)'
+	} else {
+		plan.notes << 'using the vim-lsp checkout at ${short_path(client)}'
+	}
+	vimrc := os.join_path(request.config, '${request.name}.vimrc')
+	plan.write(vimrc, vim_config(request, client), false, true)
+	plan.write(os.join_path(request.bin_dir, request.name), vim_command(request, vimrc), true, true)
+}
+
+// vim_config is the generated vimrc. Vim reads it instead of the user's own,
+// which is what keeps this profile out of the way of that one.
+fn vim_config(request &Request, client string) string {
+	mut config := '" ${marker}; run the tool again to regenerate it.\n'
+	config += '"\n'
+	config += '" visor\'s own Vim config. The ${request.name} command starts Vim with this\n'
+	config += '" file, so the vimrc you already have is not read and stays as it is.\n'
+	config += '"\n'
+	config += '" Vim has no language client built in, so this profile carries vim-lsp, a\n'
+	config += '" VimScript client, in the directory named below.\n'
+	config += '\n'
+	config += 'set nocompatible\n'
+	config += '" -u <this file> skips the defaults that would turn these on.\n'
+	config += 'filetype plugin indent on\n'
+	config += 'syntax on\n'
+	config += '\n'
+	config += "let g:visor_bin = '${request.bin}'\n"
+	config += '\n'
+	config += "execute 'set runtimepath^=${client}'\n"
+	config += '\n'
+	config += '" A save runs `v fmt` through the server. The wait is bounded because vim-lsp\n'
+	config += '" warns that a synchronous format in BufWritePre can hang while the server is\n'
+	config += '" still starting.\n'
+	config += 'let g:lsp_format_sync_timeout = 10000\n'
+	config += '\n'
+	config += '" vim-lsp leaves semantic highlighting off by default. The server advertises\n'
+	config += '" the provider, so this profile turns it on.\n'
+	config += 'let g:lsp_semantic_enabled = 1\n'
+	config += '\n'
+	config += '" The root the server starts in: the nearest v.mod or .git above the buffer,\n'
+	config += '" and the buffer\'s own directory when there is none.\n'
+	config += 'function! s:visor_root(server_info) abort\n'
+	config += '  let l:buffer = lsp#utils#get_buffer_path()\n'
+	config += "  let l:found = lsp#utils#find_nearest_parent_file_directory(l:buffer, ['v.mod', '.git'])\n"
+	config += "  return lsp#utils#path_to_uri(empty(l:found) ? fnamemodify(l:buffer, ':p:h') : l:found)\n"
+	config += 'endfunction\n'
+	config += '\n'
+	config += 'augroup visor_profile\n'
+	config += '  autocmd!\n'
+	config += '  autocmd User lsp_setup call lsp#register_server({\n'
+	config += "    \\ 'name': 'visor',\n"
+	config += "    \\ 'cmd': {server_info -> [g:visor_bin]},\n"
+	config += "    \\ 'allowlist': ['v'],\n"
+	config += "    \\ 'root_uri': function('s:visor_root'),\n"
+	config += '    \\ })\n'
+	config += '  autocmd User lsp_buffer_enabled setlocal omnifunc=lsp#complete\n'
+	config += "  autocmd User lsp_buffer_enabled echomsg 'visor attached (' . expand('%:p') . ')'\n"
+	if request.format_on_save {
+		config += "  autocmd BufWritePre *.v call execute('LspDocumentFormatSync')\n"
+	} else {
+		config += '" Formatting on save is off for this profile: :LspDocumentFormat runs it when\n'
+		config += '" you want it.\n'
+	}
+	config += 'augroup END\n'
+	return config
+}
+
+// vim_command is the shell command that starts Vim with the generated vimrc.
+fn vim_command(request &Request, vimrc string) string {
+	mut text := '#!/bin/sh\n'
+	text += '# ${marker}: Vim with the visor profile "${request.name}".\n'
+	text += 'exec vim -u "${vimrc}" "\$@"\n'
 	return text
 }
 
