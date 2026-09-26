@@ -41,6 +41,9 @@ pub fn serve_stdio(version string) int {
 	mut sink := &StdoutSink{}
 	mut server := new_server(sink)
 	server.set_version(version)
+	// before the loop, so the initialize reply already knows whether the compiler
+	// the feature lanes need is there.
+	server.probe_compiler()
 	return serve_loop(mut server, mut reader)
 }
 

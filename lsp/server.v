@@ -1,6 +1,7 @@
 module lsp
 
 import json2
+import vtool
 
 // Sender is the sink the server writes encoded messages to. The stdio transport
 // writes a frame to file descriptor 1; a test hands in a collector and reads
@@ -81,6 +82,11 @@ mut:
 	documents              DocumentStore
 	cancel                 CancelRegistry
 	progress               ProgressReporter
+	// compiler is the V binary the feature lanes run. It is resolved at
+	// startup, and compiler_error holds why there is none when there is none.
+	compiler       ?vtool.Compiler
+	compiler_caps  ?vtool.CapabilityReport
+	compiler_error string
 	// pending maps the ids of requests the server sent to the client onto what
 	// the reply means.
 	pending          map[string]PendingRequest
