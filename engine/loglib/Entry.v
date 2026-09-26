@@ -17,12 +17,15 @@ pub mut:
 	message string
 }
 
+// new_entry starts an entry bound to a logger, with no fields set yet.
 pub fn new_entry(source_logger &Logger) &Entry {
 	return &Entry{
 		logger: source_logger
 	}
 }
 
+// clone copies the entry and its fields, so a caller can extend one
+// entry without touching the other.
 pub fn (entry &Entry) clone() &Entry {
 	return &Entry{
 		logger:  entry.logger
@@ -33,6 +36,8 @@ pub fn (entry &Entry) clone() &Entry {
 	}
 }
 
+// with_fields returns a copy carrying these fields, merged over the ones
+// already set.
 pub fn (entry &Entry) with_fields(fields Fields) &Entry {
 	mut own_fields := entry.fields.clone()
 	for k, v in fields {
@@ -48,12 +53,15 @@ pub fn (entry &Entry) with_fields(fields Fields) &Entry {
 	}
 }
 
+// with_duration returns a copy with the duration recorded as a field.
 pub fn (entry &Entry) with_duration(dur time.Duration) &Entry {
 	return entry.with_fields({
 		'duration': dur.str()
 	})
 }
 
+// with_gc_heap_usage returns a copy with the GC heap numbers recorded as
+// fields.
 pub fn (entry &Entry) with_gc_heap_usage(usage GCHeapUsage) &Entry {
 	return entry.with_fields({
 		'heap_size':      usage.heap_size.str()
@@ -64,22 +72,27 @@ pub fn (entry &Entry) with_gc_heap_usage(usage GCHeapUsage) &Entry {
 	})
 }
 
+// error logs the message at error level.
 pub fn (entry &Entry) error(msg ...string) {
 	entry.log(.error, ...msg)
 }
 
+// warn logs the message at warning level.
 pub fn (entry &Entry) warn(msg ...string) {
 	entry.log(.warn, ...msg)
 }
 
+// info logs the message at info level.
 pub fn (entry &Entry) info(msg ...string) {
 	entry.log(.info, ...msg)
 }
 
+// trace logs the message at trace level.
 pub fn (entry &Entry) trace(msg ...string) {
 	entry.log(.trace, ...msg)
 }
 
+// log writes the message if the logger has this level enabled.
 pub fn (entry &Entry) log(level LogLevel, msg ...string) {
 	if !entry.logger.is_level_enabled(level) {
 		return
@@ -87,20 +100,26 @@ pub fn (entry &Entry) log(level LogLevel, msg ...string) {
 	entry.log_impl(level, ...msg)
 }
 
+// log_one is log for a caller that already holds one string and cannot
+// spread a variadic.
 pub fn (entry &Entry) log_one(level LogLevel, msg string) {
 	entry.log(level, msg)
 }
 
+// log_impl writes the entry at the given level, and panics afterwards when
+// that level is panic.
 pub fn (entry &Entry) log_impl(level LogLevel, msg ...string) {
-	mut new_entry := entry.clone()
-	new_entry.time = time.now()
-	new_entry.level = level
-	new_entry.message = msg.join(' ')
+	// `record` is the entry this call writes; the name is not `new_entry`
+	// because that is the constructor and V notices the shadowing.
+	mut record := entry.clone()
+	record.time = time.now()
+	record.level = level
+	record.message = msg.join(' ')
 
-	new_entry.write()
+	record.write()
 
 	if u64(level) <= u64(LogLevel.panic) {
-		panic(new_entry)
+		panic(record)
 	}
 }
 

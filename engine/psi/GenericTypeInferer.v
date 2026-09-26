@@ -82,12 +82,12 @@ fn (g &GenericTypeInferer) infer_simple_generic_ts_map(arg_owner GenericArgument
 
 	if arg_owner is CallExpression {
 		if params_owner is SignatureOwner {
-			arguments := arg_owner.arguments()
+			call_arguments := arg_owner.arguments()
 			signature := params_owner.signature() or { return map[string]types.Type{} }
 			parameters := signature.parameters()
 
-			mut arguments_types := []types.Type{cap: arguments.len}
-			for argument in arguments {
+			mut arguments_types := []types.Type{cap: call_arguments.len}
+			for argument in call_arguments {
 				arguments_types << infer_type(PsiElement(argument))
 			}
 			mut parameters_types := []types.Type{cap: parameters.len}
@@ -154,6 +154,8 @@ fn (g &GenericTypeInferer) extract_instantiation(typ types.Type) ?&types.Generic
 	return none
 }
 
+// extract_instantiation_ts returns the type names a generic instantiation
+// resolves to, by looking the inner type up in the stub index.
 pub fn (_ &GenericTypeInferer) extract_instantiation_ts(typ types.GenericInstantiationType) []string {
 	inner_name := typ.inner.qualified_name()
 	elements := stubs_index.get_any_elements_by_name(inner_name)

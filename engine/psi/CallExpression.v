@@ -21,10 +21,13 @@ fn (c &CallExpression) caller_type() types.Type {
 	return types.unknown_type
 }
 
+// expression returns the callee, which the grammar puts first.
 pub fn (c CallExpression) expression() ?PsiElement {
 	return c.first_child()
 }
 
+// ref_expression returns the reference or selector the call resolves
+// through.
 pub fn (c CallExpression) ref_expression() ?ReferenceExpressionBase {
 	if selector_expr := c.find_child_by_type(.selector_expression) {
 		if selector_expr is ReferenceExpressionBase {
@@ -39,6 +42,7 @@ pub fn (c CallExpression) ref_expression() ?ReferenceExpressionBase {
 	return none
 }
 
+// resolve returns what the call refers to.
 pub fn (c CallExpression) resolve() ?PsiElement {
 	expr := c.ref_expression()?
 
@@ -50,6 +54,8 @@ pub fn (c CallExpression) resolve() ?PsiElement {
 	return none
 }
 
+// parameter_index_on_offset returns which argument holds the offset,
+// counted by the commas before it.
 pub fn (c CallExpression) parameter_index_on_offset(offset u32) int {
 	argument_list := c.find_child_by_type(.argument_list) or { return -1 }
 	commas := argument_list.children().filter(it.get_text() == ',')
@@ -57,20 +63,27 @@ pub fn (c CallExpression) parameter_index_on_offset(offset u32) int {
 	return count_commas_before
 }
 
+// arguments returns the expressions passed to the call, in source order.
 pub fn (c CallExpression) arguments() []PsiElement {
 	argument_list := c.find_child_by_type(.argument_list) or { return [] }
-	arguments := argument_list.find_children_by_type(.argument)
-	mut exprs := []PsiElement{cap: arguments.len}
-	for argument in arguments {
+	// `argument_nodes`, not `arguments`: the method of that name is right here
+	// and V notices the shadowing.
+	argument_nodes := argument_list.find_children_by_type(.argument)
+	mut exprs := []PsiElement{cap: argument_nodes.len}
+	for argument in argument_nodes {
 		exprs << argument.first_child() or { continue }
 	}
 	return exprs
 }
 
+// is_json_decode reports whether the call carries the special argument
+// list that json.decode uses to name its type.
 pub fn (c CallExpression) is_json_decode() bool {
 	return c.has_child_of_type(.special_argument_list)
 }
 
+// get_json_decode_type reads the type named in the special argument list,
+// unknown when it cannot be read.
 pub fn (c &CallExpression) get_json_decode_type() types.Type {
 	list := c.find_child_by_type(.special_argument_list) or { return types.unknown_type }
 	typ := list.find_child_by_type(.plain_type) or { return types.unknown_type }

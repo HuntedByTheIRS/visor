@@ -36,7 +36,7 @@ pub fn supers(strukt psi.StructDeclaration) []psi.PsiElement {
 		}
 
 		if candidate is psi.InterfaceDeclaration {
-			if is_implemented_interface(methods, fields, *candidate) {
+			if is_implemented_interface(methods, fields, candidate) {
 				result[name] = candidate
 			}
 		}

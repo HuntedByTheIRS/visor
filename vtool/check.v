@@ -75,7 +75,7 @@ fn parse_diagnostic(line string, path string) ?Diagnostic {
 	// source sits under a right-aligned line-number gutter. Without this, a
 	// context line that happens to hold a run of numbers separated by colons
 	// would read as a diagnostic of its own.
-	if line.len == 0 || line.starts_with(' ') || line.starts_with('\t') {
+	if line == '' || line.starts_with(' ') || line.starts_with('	') {
 		return none
 	}
 	mut cut := -1

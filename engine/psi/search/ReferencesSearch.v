@@ -29,6 +29,7 @@ pub:
 	only_in_current_file bool
 }
 
+// references finds every use of the symbol the element resolves to.
 pub fn references(element psi.PsiElement, params SearchParams) []psi.PsiElement {
 	containing_file := element.containing_file() or { return [] }
 	return ReferencesSearch{
@@ -42,6 +43,8 @@ struct ReferencesSearch {
 	containing_file &psi.PsiFile
 }
 
+// search resolves the element and picks the search that fits what the
+// element turned out to be.
 pub fn (r &ReferencesSearch) search(element psi.PsiElement) []psi.PsiElement {
 	resolved := resolve_identifier(element) or { return [] }
 	if resolved is psi.VarDefinition {
@@ -108,10 +111,14 @@ pub fn (r &ReferencesSearch) search_method(element psi.FunctionOrMethodDeclarati
 	return result
 }
 
+// search_generic_parameter looks for uses of a type parameter, which is
+// never public.
 pub fn (r &ReferencesSearch) search_generic_parameter(element psi.GenericParameter) []psi.PsiElement {
 	return r.search_private_named_element(element)
 }
 
+// search_module_import looks for imports of the module this element names,
+// in the modules that depend on it.
 pub fn (r &ReferencesSearch) search_module_import(element psi.PsiNamedElement) []psi.PsiElement {
 	if r.params.only_in_current_file {
 		// module cannot be imported in the same file where it is defined
@@ -147,6 +154,8 @@ pub fn (r &ReferencesSearch) search_module_import(element psi.PsiNamedElement) [
 	return result
 }
 
+// search_named_element sends public symbols and fields to the whole
+// workspace and keeps private ones inside their module.
 pub fn (r &ReferencesSearch) search_named_element(element psi.PsiNamedElement) []psi.PsiElement {
 	is_public := element.is_public()
 	is_field := element is psi.FieldDeclaration
@@ -157,11 +166,15 @@ pub fn (r &ReferencesSearch) search_named_element(element psi.PsiNamedElement) [
 	}
 }
 
+// search_private_named_element stays inside the module that declares the
+// element.
 pub fn (r &ReferencesSearch) search_private_named_element(element psi.PsiNamedElement) []psi.PsiElement {
 	module_name := r.containing_file.module_fqn()
 	return r.search_named_element_in_module(module_name, element)
 }
 
+// search_named_element_in_module parses the module's files and looks
+// through each of them.
 pub fn (r &ReferencesSearch) search_named_element_in_module(module_name string, element psi.PsiNamedElement) []psi.PsiElement {
 	mut result := []psi.PsiElement{cap: 10}
 	if r.params.include_declaration {
@@ -197,6 +210,9 @@ pub fn (r &ReferencesSearch) search_named_element_in_module(module_name string, 
 	return result
 }
 
+// search_public_named_element searches the modules that depend on the one
+// declaring the element, plus the declaring module when it is part of the
+// workspace.
 pub fn (r &ReferencesSearch) search_public_named_element(element psi.PsiNamedElement) []psi.PsiElement {
 	if r.params.only_in_current_file {
 		mut result := []psi.PsiElement{cap: 10}
@@ -249,6 +265,7 @@ pub fn (r &ReferencesSearch) search_public_named_element(element psi.PsiNamedEle
 	return all_usages
 }
 
+// search_in_scope limits the search to the scope the symbol lives in.
 pub fn (r &ReferencesSearch) search_in_scope(element psi.PsiNamedElement, scope psi.PsiElement) []psi.PsiElement {
 	mut result := []psi.PsiElement{cap: 10}
 	if r.params.include_declaration {
@@ -261,6 +278,8 @@ pub fn (r &ReferencesSearch) search_in_scope(element psi.PsiNamedElement, scope 
 	return result
 }
 
+// search_in walks one tree and collects the references that resolve to the
+// same symbol.
 pub fn (r &ReferencesSearch) search_in(element psi.PsiNamedElement, search_root psi.PsiElement) []psi.PsiElement {
 	name := element.name()
 	mut result := []psi.PsiElement{cap: 10}

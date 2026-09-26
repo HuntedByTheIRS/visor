@@ -22,6 +22,8 @@ pub interface StubElement {
 	get_psi() ?PsiElement
 }
 
+// get_psi turns each stub in the list into its PSI element, skipping the
+// stubs that do not resolve.
 pub fn (elements []StubElement) get_psi() []PsiElement {
 	mut result := []PsiElement{cap: elements.len}
 	for element in elements {
@@ -30,9 +32,13 @@ pub fn (elements []StubElement) get_psi() []PsiElement {
 	return result
 }
 
+// is_valid_stub reports whether a stub is usable; for a stub base that
+// means its index list is set.
 pub fn is_valid_stub(s StubElement) bool {
 	if s is StubBase {
-		return !isnil(s) && !isnil(s.stub_list)
+		// `&s` because V deprecates handing a struct value to a voidptr
+		// parameter; the smartcast below yields a value, not a pointer.
+		return !isnil(&s) && !isnil(s.stub_list)
 	}
 	return !isnil(s)
 }

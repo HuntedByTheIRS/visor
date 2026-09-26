@@ -13,9 +13,11 @@ pub mut:
 	data             map[int]map[string][]StubId
 }
 
+// non_fqn_keys lists the keys whose values are not module qualified, so the
+// occurrence below stores them as they are.
 const non_fqn_keys = [StubIndexKey.global_variables, .methods_fingerprint, .fields_fingerprint,
 	.interface_methods_fingerprint, .interface_fields_fingerprint, .methods, .static_methods,
-	.attributes, .modules_fingerprint]
+	.attributes, .modules_fingerprint]!
 
 fn (mut s StubIndexSink) occurrence(key StubIndexKey, value string) {
 	module_fqn := s.module_fqn()
@@ -35,6 +37,8 @@ fn (mut s StubIndexSink) occurrence(key StubIndexKey, value string) {
 	s.data[int(key)][resulting_value] = ids
 }
 
+// module_fqn returns the module the stub list belongs to, empty when the
+// sink has no stub list.
 @[inline]
 pub fn (s StubIndexSink) module_fqn() string {
 	if s.stub_list == unsafe { nil } {

@@ -9,6 +9,8 @@ pub fn infer_type(elem ?PsiElement) types.Type {
 	return TypeInferer{}.infer_type(elem)
 }
 
+// convert_type turns a plain type element into a type, starting with an
+// empty visited map.
 pub fn convert_type(plain_type ?PsiElement) types.Type {
 	mut visited := map[string]types.Type{}
 	return TypeInferer{}.convert_type(plain_type, mut visited)
@@ -26,6 +28,8 @@ fn (t &TypeInferer) infer_wrapped_expression(expression ?PsiElement) types.Type 
 	return types.unwrap_result_or_option_type(expr_type)
 }
 
+// infer_type returns the type of an element, reading through the cache
+// first.
 pub fn (t &TypeInferer) infer_type(elem ?PsiElement) types.Type {
 	element := elem or { return types.unknown_type }
 
@@ -38,6 +42,7 @@ pub fn (t &TypeInferer) infer_type(elem ?PsiElement) types.Type {
 	return typ
 }
 
+// infer_type_impl does the inference work; the caching is in infer_type.
 pub fn (t &TypeInferer) infer_type_impl(elem ?PsiElement) types.Type {
 	element := elem or { return types.unknown_type }
 
@@ -172,6 +177,8 @@ pub fn (t &TypeInferer) infer_type_impl(elem ?PsiElement) types.Type {
 	}
 }
 
+// infer_binary_expression_type returns bool for comparisons, and the left
+// operand's type for the rest.
 pub fn (t &TypeInferer) infer_binary_expression_type(element BinaryExpression) types.Type {
 	match element.operator() {
 		'&&', '||', '==', '!=', '<', '<=', '>', '>=' {
@@ -197,6 +204,8 @@ pub fn (t &TypeInferer) infer_binary_expression_type(element BinaryExpression) t
 	}
 }
 
+// infer_unary_expression_type returns bool for `!` and the operand's type
+// otherwise.
 pub fn (t &TypeInferer) infer_unary_expression_type(element UnaryExpression) types.Type {
 	operator := element.operator()
 	if operator == '!' {
@@ -214,12 +223,16 @@ pub fn (t &TypeInferer) infer_unary_expression_type(element UnaryExpression) typ
 	}
 }
 
+// infer_index_expression_type infers the type of whatever is being
+// indexed.
 pub fn (t &TypeInferer) infer_index_expression_type(element IndexExpression) types.Type {
 	expr := element.expression() or { return types.unknown_type }
 	expr_type := t.infer_type(expr)
 	return t.infer_index_type(expr_type)
 }
 
+// infer_slice_expression_type infers the type a slice of an expression
+// yields.
 pub fn (t &TypeInferer) infer_slice_expression_type(element SliceExpression) types.Type {
 	expr := element.expression() or { return types.unknown_type }
 	expr_type := t.infer_type(expr)
@@ -230,6 +243,8 @@ pub fn (t &TypeInferer) infer_slice_expression_type(element SliceExpression) typ
 	return expr_type
 }
 
+// infer_compile_time_if_expression_type infers the type the branch block
+// yields.
 pub fn (t &TypeInferer) infer_compile_time_if_expression_type(element CompileTimeIfExpression) types.Type {
 	block := element.block() or { return types.unknown_type }
 	block_type := t.infer_type(PsiElement(block))
@@ -240,6 +255,7 @@ pub fn (t &TypeInferer) infer_compile_time_if_expression_type(element CompileTim
 	return block_type
 }
 
+// infer_match_expression_type infers the type the match arms yield.
 pub fn (t &TypeInferer) infer_match_expression_type(element MatchExpression) types.Type {
 	arms := element.arms()
 	if arms.len == 0 {
@@ -250,6 +266,8 @@ pub fn (t &TypeInferer) infer_match_expression_type(element MatchExpression) typ
 	return t.infer_type(PsiElement(block))
 }
 
+// infer_array_creation_type infers the element type from the first
+// expression, unknown when the literal is empty.
 pub fn (t &TypeInferer) infer_array_creation_type(element ArrayCreation) types.Type {
 	expressions := element.expressions()
 	if expressions.len == 0 {
@@ -264,6 +282,8 @@ pub fn (t &TypeInferer) infer_array_creation_type(element ArrayCreation) types.T
 	return types.new_array_type(t.infer_type(first_expr))
 }
 
+// infer_map_init_expression_type infers a map's key and value types from
+// its key-value pairs.
 pub fn (t &TypeInferer) infer_map_init_expression_type(element MapInitExpression) types.Type {
 	file := element.containing_file() or { return types.unknown_type }
 	module_fqn := file.module_fqn()
@@ -284,6 +304,8 @@ pub fn (t &TypeInferer) infer_map_init_expression_type(element MapInitExpression
 	return types.new_map_type(module_fqn, types.unknown_type, types.unknown_type)
 }
 
+// infer_call_expression_type handles a call whose callee is a function
+// literal.
 pub fn (t &TypeInferer) infer_call_expression_type(element CallExpression, mut visited map[string]types.Type) types.Type {
 	if grand := element.expression() {
 		if grand is FunctionLiteral {
@@ -294,6 +316,8 @@ pub fn (t &TypeInferer) infer_call_expression_type(element CallExpression, mut v
 	return t.infer_call_expr_type(element)
 }
 
+// infer_var_definition_type infers a var's type, and covers the definitions
+// a range clause introduces.
 pub fn (t &TypeInferer) infer_var_definition_type(element VarDefinition) types.Type {
 	grand := element.parent_nth(2) or { return types.unknown_type }
 	if grand.node().type_name == .range_clause {
@@ -329,6 +353,8 @@ pub fn (t &TypeInferer) infer_var_definition_type(element VarDefinition) types.T
 	return types.unknown_type
 }
 
+// infer_parameter_declaration_type infers a parameter's type, wrapping a
+// variadic parameter in an array.
 pub fn (t &TypeInferer) infer_parameter_declaration_type(element ParameterDeclaration) types.Type {
 	type_ := t.infer_from_plain_type(element)
 	if _ := element.find_child_by_name('variadic') {
@@ -337,16 +363,21 @@ pub fn (t &TypeInferer) infer_parameter_declaration_type(element ParameterDeclar
 	return type_
 }
 
+// infer_block_type infers the type of a block's last expression.
 pub fn (t &TypeInferer) infer_block_type(element Block) types.Type {
 	last_expression := element.last_expression() or { return types.unknown_type }
 	return t.infer_type(last_expression)
 }
 
+// infer_global_var_definition_type converts the type a global var
+// declares.
 pub fn (t &TypeInferer) infer_global_var_definition_type(element GlobalVarDefinition, mut visited map[string]types.Type) types.Type {
 	type_element := element.find_child_by_type_or_stub(.plain_type) or { return types.unknown_type }
 	return t.convert_type(type_element, mut visited)
 }
 
+// infer_embedded_definition_type converts the struct an embedded field
+// names.
 pub fn (t &TypeInferer) infer_embedded_definition_type(element EmbeddedDefinition, mut visited map[string]types.Type) types.Type {
 	if qualified_type := element.find_child_by_type_or_stub(.qualified_type) {
 		return t.convert_type_inner(qualified_type, mut visited)
@@ -362,6 +393,8 @@ pub fn (t &TypeInferer) infer_embedded_definition_type(element EmbeddedDefinitio
 	return types.unknown_type
 }
 
+// infer_reference_expression_type infers from what the reference resolves
+// to.
 pub fn (t &TypeInferer) infer_reference_expression_type(element ReferenceExpression) types.Type {
 	if resolved := element.resolve() {
 		return t.infer_type(resolved)
@@ -379,6 +412,8 @@ pub fn (t &TypeInferer) infer_reference_expression_type(element ReferenceExpress
 	return types.unknown_type
 }
 
+// infer_if_expression_type infers the if block's type, falling back to the
+// else block.
 pub fn (t &TypeInferer) infer_if_expression_type(element IfExpression) types.Type {
 	block := element.block() or { return types.unknown_type }
 	block_type := t.infer_type(PsiElement(block))
@@ -389,16 +424,20 @@ pub fn (t &TypeInferer) infer_if_expression_type(element IfExpression) types.Typ
 	return block_type
 }
 
+// infer_unsafe_expression_type infers the type of the block inside unsafe.
 pub fn (t &TypeInferer) infer_unsafe_expression_type(element UnsafeExpression) types.Type {
 	block := element.block() or { return types.unknown_type }
 	return t.infer_type(PsiElement(block))
 }
 
+// infer_type_initializer_type converts the type an initializer names.
 pub fn (t &TypeInferer) infer_type_initializer_type(element TypeInitializer, mut visited map[string]types.Type) types.Type {
 	type_element := element.find_child_by_type(.plain_type) or { return types.unknown_type }
 	return t.convert_type(type_element, mut visited)
 }
 
+// infer_selector_expression_type infers from what the selector resolves to,
+// and instantiates the generic type when the receiver is one.
 pub fn (t &TypeInferer) infer_selector_expression_type(element SelectorExpression) types.Type {
 	resolved := element.resolve() or { return types.unknown_type }
 	typ := t.infer_type(resolved)
@@ -408,6 +447,7 @@ pub fn (t &TypeInferer) infer_selector_expression_type(element SelectorExpressio
 	return typ
 }
 
+// infer_range_type infers the element type a range yields.
 pub fn (t &TypeInferer) infer_range_type(element Range) types.Type {
 	if element.inclusive() {
 		left := element.left() or { return types.unknown_type }
@@ -416,6 +456,8 @@ pub fn (t &TypeInferer) infer_range_type(element Range) types.Type {
 	return types.new_array_type(types.new_primitive_type('int'))
 }
 
+// process_signature builds the type a signature produces, out of its
+// parameters.
 pub fn (t &TypeInferer) process_signature(signature Signature) types.Type {
 	params := signature.parameters()
 	// Written as a loop: V 0.5.2 gives the map result the type of the closure
@@ -441,6 +483,8 @@ pub fn (t &TypeInferer) process_signature(signature Signature) types.Type {
 	return types.new_function_type(module_fqn, param_types, result_type, result == none)
 }
 
+// process_range_clause infers the element type of a range clause, from the
+// expression on the right.
 pub fn (t &TypeInferer) process_range_clause(element PsiElement, range PsiElement) types.Type {
 	right := range.find_child_by_name('right') or { return types.unknown_type }
 	right_type := types.unwrap_alias_type(t.infer_type(right))
@@ -505,6 +549,8 @@ pub fn (t &TypeInferer) process_range_clause(element PsiElement, range PsiElemen
 	return types.unknown_type
 }
 
+// infer_iterator_struct infers the type an iterator struct's next method
+// yields.
 pub fn (_ &TypeInferer) infer_iterator_struct(typ types.Type) types.Type {
 	method := find_method(typ, 'next') or { return types.unknown_type }
 	if method is FunctionOrMethodDeclaration {
@@ -518,6 +564,8 @@ pub fn (_ &TypeInferer) infer_iterator_struct(typ types.Type) types.Type {
 	return types.unknown_type
 }
 
+// infer_call_expr_type infers a call's result type, and handles
+// json.decode first.
 pub fn (t &TypeInferer) infer_call_expr_type(element CallExpression) types.Type {
 	if element.is_json_decode() {
 		return types.new_result_type(element.get_json_decode_type(), false)
@@ -560,6 +608,8 @@ pub fn (t &TypeInferer) infer_call_expr_type(element CallExpression) types.Type 
 	return types.unknown_type
 }
 
+// process_map_array_method_call infers the result of a call to a map or
+// array built-in method.
 pub fn (t &TypeInferer) process_map_array_method_call(element FunctionOrMethodDeclaration, element_type types.FunctionType,
 	expr CallExpression) ?types.Type {
 	receiver_type := types.unwrap_pointer_type(element.receiver_type())
@@ -579,6 +629,7 @@ pub fn (t &TypeInferer) process_map_array_method_call(element FunctionOrMethodDe
 	return none
 }
 
+// process_array_method_call infers the result an array method returns.
 pub fn (_ &TypeInferer) process_array_method_call(element FunctionOrMethodDeclaration, element_type types.FunctionType,
 	expr CallExpression) ?types.Type {
 	return_type := element_type.result
@@ -592,8 +643,8 @@ pub fn (_ &TypeInferer) process_array_method_call(element FunctionOrMethodDeclar
 
 	if types.is_builtin_array_type(return_type) {
 		if element.name() == 'map' {
-			arguments := expr.arguments()
-			first_arg := arguments[0] or { return none }
+			method_arguments := expr.arguments()
+			first_arg := method_arguments[0] or { return none }
 			first_arg_type := infer_type(first_arg)
 
 			// map(fn (int) <type> { ... }) -> array<type>
@@ -611,6 +662,8 @@ pub fn (_ &TypeInferer) process_array_method_call(element FunctionOrMethodDeclar
 	return none
 }
 
+// process_map_method_call infers the result of a call on a map, none when
+// the method is not one it knows.
 pub fn (_ &TypeInferer) process_map_method_call(element FunctionOrMethodDeclaration, expr CallExpression) ?types.Type {
 	caller_type := types.unwrap_alias_type(expr.caller_type())
 
@@ -626,6 +679,7 @@ pub fn (_ &TypeInferer) process_map_method_call(element FunctionOrMethodDeclarat
 	return none
 }
 
+// infer_literal_type infers a literal's type from its child token.
 pub fn (_ &TypeInferer) infer_literal_type(element Literal) types.Type {
 	child := element.first_child() or { return types.unknown_type }
 	if child.node().type_name == .interpreted_string_literal
@@ -664,6 +718,8 @@ pub fn (_ &TypeInferer) infer_literal_type(element Literal) types.Type {
 	return types.unknown_type
 }
 
+// infer_index_type returns the type that indexing a value of this type
+// yields.
 pub fn (t &TypeInferer) infer_index_type(typ types.Type) types.Type {
 	if typ is types.ArrayType {
 		return typ.inner
@@ -688,6 +744,8 @@ pub fn (t &TypeInferer) infer_index_type(typ types.Type) types.Type {
 	return types.unknown_type
 }
 
+// convert_type converts a plain type element, with the visited map stopping
+// the walk on recursive types.
 pub fn (t &TypeInferer) convert_type(plain_type ?PsiElement, mut visited map[string]types.Type) types.Type {
 	typ := plain_type or { return types.unknown_type }
 	if typ !is PlainType {
@@ -710,6 +768,8 @@ pub fn (t &TypeInferer) convert_type(plain_type ?PsiElement, mut visited map[str
 	return type_inner
 }
 
+// convert_type_inner converts a type element that is already known to be
+// one, recursing into its parts.
 pub fn (t &TypeInferer) convert_type_inner(element PsiElement, mut visited map[string]types.Type) types.Type {
 	if element.element_type() == .pointer_type {
 		inner := element.last_child_or_stub()
@@ -876,6 +936,8 @@ fn (t &TypeInferer) infer_from_plain_type(element PsiElement) types.Type {
 	return t.convert_type(plain_typ, mut visited)
 }
 
+// infer_context_type infers the type the surrounding expression expects
+// here.
 pub fn (t &TypeInferer) infer_context_type(elem ?PsiElement) types.Type {
 	element := elem or { return types.unknown_type }
 	parent := element.parent() or { return types.unknown_type }

@@ -31,7 +31,7 @@ pub const all_kinds = [
 	CapabilityKind.check_syntax,
 	CapabilityKind.ast_outline,
 	CapabilityKind.format,
-]
+]!
 
 // Capability is one probe result.
 pub struct Capability {
@@ -54,16 +54,19 @@ pub:
 	items           map[string]Capability
 }
 
+// status_of returns what the probe found for one capability.
 pub fn (r CapabilityReport) status_of(kind CapabilityKind) CapabilityStatus {
 	item := r.items[kind.str()] or { Capability{ kind: kind, status: .unknown } }
 	return item.status
 }
 
+// detail_of returns the message behind a capability's status.
 pub fn (r CapabilityReport) detail_of(kind CapabilityKind) string {
 	item := r.items[kind.str()] or { Capability{ kind: kind, status: .unknown } }
 	return item.detail
 }
 
+// supports reports whether the capability was found in this build.
 pub fn (r CapabilityReport) supports(kind CapabilityKind) bool {
 	return r.status_of(kind) == .supported
 }
