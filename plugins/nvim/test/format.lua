@@ -104,8 +104,14 @@ run('silent write')
 check('a save with format on save on rewrites the buffer',
   table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), '\n')
     == table.concat(formatted, '\n'))
+-- A failure here has to say what landed on disk and which file was read: the
+-- buffer being formatted and the file not is the shape this check exists to
+-- catch, and a bare FAIL leaves the reader guessing which half went wrong.
+local on_disk = table.concat(vim.fn.readfile(file), '\n')
 check('the saved file holds the formatted text',
-  table.concat(vim.fn.readfile(file), '\n') == table.concat(formatted, '\n'))
+  on_disk == table.concat(formatted, '\n'),
+  string.format('%s holds %q, and the buffer is %s', file, on_disk,
+    vim.api.nvim_buf_get_name(bufnr)))
 
 -- The buffer variable wins over the setting for one buffer.
 vim.b[bufnr].visor_format_on_save = false
