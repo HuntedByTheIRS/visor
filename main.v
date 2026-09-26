@@ -3,7 +3,7 @@ module main
 import lsp
 import os
 
-const version = '0.0.1'
+const version = os.execute('git describe --tags').output.trim_space()
 
 const usage_text = 'visor ${version}
 A language server for V.
