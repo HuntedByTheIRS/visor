@@ -90,7 +90,13 @@ local function on_attach(client, bufnr)
   -- advertised tokens would leave the client polling for an answer it cannot
   -- get, so the negotiated capability decides.
   if config.options.semantic_tokens and client.server_capabilities.semanticTokensProvider then
-    vim.lsp.semantic_tokens.start(bufnr, client.id)
+    -- enable() replaced start() in 0.12 and start() warns from there, while
+    -- 0.11 only has start(). Both spellings land on the same code path.
+    if vim.lsp.semantic_tokens.enable then
+      vim.lsp.semantic_tokens.enable(true, { bufnr = bufnr, client_id = client.id })
+    else
+      vim.lsp.semantic_tokens.start(bufnr, client.id)
+    end
   end
 end
 
