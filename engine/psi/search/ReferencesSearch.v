@@ -3,6 +3,11 @@
 
 module search
 
+// Nothing imports this package yet. README's feature table puts references and
+// implementation under v0.1.0, and this is the ported engine for both, so it
+// stays until the feature module that calls it lands. The warning gate compiles
+// it meanwhile, so it does not rot.
+
 import engine.psi
 import engine.parser
 import runtime
