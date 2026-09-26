@@ -35,6 +35,7 @@ require('visor').setup({
   cmd = nil,               -- a path, or an argv list
   autostart = true,        -- start on the filetype event
   format_on_save = false,  -- write through `v fmt` on every save
+  format_timeout_ms = 10000, -- how long a formatting request may take
   semantic_tokens = true,  -- ask for highlighting tokens on attach
   root_markers = { 'v.mod', '.git' },
 })
@@ -46,6 +47,13 @@ server starts for the first V buffer that opens.
 `format_on_save` is off because it rewrites the whole buffer through `v fmt`,
 and a project whose own format gate disagrees has a reason to run
 `:VisorFormat` by hand instead.
+
+`format_timeout_ms` is ten seconds rather than Neovim's one, because a save is
+not a keystroke: on a cold machine `v fmt` over a large file can take longer
+than the default, and a request that times out is cancelled, so the file would
+go to disk as it stands. When that happens the plugin says so rather than
+letting a save pass for formatted. Nothing the plugin does during a save can
+cancel the write either: a formatting failure costs a message, not the file.
 
 `semantic_tokens` is on because the server only advertises the provider when it
 can serve it. Highlighting covers what the parse tree can name on its own:
@@ -79,7 +87,7 @@ plugins/nvim/test/run.sh --bin /tmp/visor
 | Script | What it settles |
 | --- | --- |
 | `connect.lua` | a V buffer brings a client through initialize, the root search lands on the project and falls back to the buffer's directory when there is no marker, two projects are two clients, `on_attach` ran, and `:VisorInfo` and `stop()` report what happened |
-| `format.lua` | `:VisorFormat` and format on save put what `v fmt` wrote into the buffer, a save with the setting off leaves it alone, a per-buffer override wins, and the file on disk only changes at save |
+| `format.lua` | `:VisorFormat` and format on save put what `v fmt` wrote into the buffer, a save with the setting off leaves it alone, a per-buffer override wins, the file on disk only changes at save, and a save the server never answers for still lands and says so |
 | `highlights.lua` | tokens arrive and land as highlight: the module keyword, a comment, a struct name, a field, a const, a number and a string are each read back out of the editor with the type the walk gave them, and a const carries the read only modifier |
 
 Nothing in them mocks the protocol.

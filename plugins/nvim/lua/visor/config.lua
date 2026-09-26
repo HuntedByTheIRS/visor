@@ -20,6 +20,12 @@ M.defaults = {
   -- disagrees has a reason to run :VisorFormat by hand instead.
   format_on_save = false,
 
+  -- format_timeout_ms is how long a formatting request may take. Neovim's own
+  -- default is one second, which is a keystroke's worth of patience: on a cold
+  -- machine `v fmt` over a large file can take longer, and a save that skips
+  -- formatting is worse than one that waits.
+  format_timeout_ms = 10000,
+
   -- semantic_tokens asks for highlighting tokens on attach, when the server
   -- said in initialize that it has them.
   semantic_tokens = true,
