@@ -78,9 +78,6 @@ them.
 9. Commit often, small. One logical change per commit, made as the work
    happens. A lane that lands as one commit was done in the wrong shape.
 
-The plan calls these "the eight hard rules" and then lists nine of them, because
-rule 9 was added after the plan was accepted. Nine is the real count.
-
 ## Why the compiler talks back through a pipe
 
 `v -check -nocolor -` reads a buffer on stdin, reports errors as

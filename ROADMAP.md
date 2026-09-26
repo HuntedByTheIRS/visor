@@ -17,8 +17,8 @@ releases would ship a server nobody can use yet, and deriving the engine from
 v-analyzer is what makes the full set reachable in one release. The list itself
 is the table in `README.md`.
 
-Acceptance for the release is the criteria in the plan, each one shown by a
-command and the result it printed.
+Acceptance for the release is a row-by-row pass over the feature table, each row
+shown by a command and the result it printed.
 
 ## Compiler floor
 
