@@ -25,8 +25,8 @@ command on the same pinned version.
 ## Where things live
 
 `main.v` is the entry point. Modules are real subdirectories imported by name:
-`vtool/`, `engine/`, `lsp/`, `diag/`, `features/`. A whole subsystem goes in its
-own directory with its own tests, and no file grows past roughly 4 kLOC.
+`vtool/`, `engine/`, `lsp/`, `tree_sitter_v/`. A whole subsystem goes in its own
+directory with its own tests, and no file grows past roughly 4 kLOC.
 
 Do not put `subdirs: [...]` in `v.mod`. In V 0.5.2 that declares a single virtual
 module over those directories; v-analyzer's build fails on exactly that layout.
