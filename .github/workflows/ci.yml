@@ -45,7 +45,9 @@ jobs:
           # ships it, so the install is normally a no-op; it keeps the job from
           # depending on what the image happens to carry. Without node the job
           # dies at exit 127 before a build step runs.
-          $SUDO apt-get install -y -qq git curl make gcc nodejs >/dev/null
+          # vim is for the installer step: vim-lsp needs +job and +channel,
+          # which vim-tiny, if that is what the image carries, does not have.
+          $SUDO apt-get install -y -qq git curl make gcc nodejs vim >/dev/null
           node --version
 
       - name: Checkout visor
@@ -113,6 +115,43 @@ jobs:
             editors="$editors --nvim /tmp/nvim-$version/bin/nvim"
           done
           v run tools/editor_test.vsh --bin /tmp/visor $editors
+
+      # The installer is what a user runs, so it gets a run here rather than a
+      # reader's trust. --root keeps it out of the runner's home and --bin
+      # installs the binary this job already built. What is checked is what this
+      # job can check honestly: the files land where the profile expects them,
+      # Vim's client comes up from the generated vimrc, and the Neovim profile
+      # attaches to a real server. It runs after the editor tests because it uses
+      # the Neovim they downloaded.
+      - name: Installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=$(mktemp -d)
+          v run tools/install_lsp.vsh nvim vim --root "$root" --bin /tmp/visor
+
+          test -x "$root/.local/bin/visorvim"
+          test -x "$root/.local/bin/visorvim-vim"
+          test -f "$root/.config/visorvim/init.lua"
+          test -f "$root/.config/visorvim-vim/visorvim-vim.vimrc"
+          test -d "$root/.config/visorvim-vim/vim-lsp/autoload"
+
+          printf 'fn main() {}\n' > "$root/main.v"
+
+          # Vim reads the generated vimrc instead of a user's own, and the
+          # client has to be there when it starts.
+          HOME="$root" vim -u "$root/.config/visorvim-vim/visorvim-vim.vimrc" -es \
+            -c 'if exists(":LspStatus") != 2 | cquit | endif' -c 'qa!' < /dev/null
+
+          # The installed command starts Neovim under the profile, and the
+          # client attaches: that is the whole point of an install. Headless
+          # Neovim writes its messages to stderr, so that is where the line is.
+          HOME="$root" PATH="$root/.local/bin:/tmp/nvim-v0.12.5/bin:$PATH" \
+            visorvim --headless \
+            -c "edit $root/main.v" \
+            -c 'lua vim.wait(30000, function() return #vim.lsp.get_clients() > 0 end)' \
+            -c 'lua print("visor clients: " .. #vim.lsp.get_clients())' \
+            -c 'qa!' 2>&1 | grep -q 'visor clients: 1'
 
       - name: Ban compiler internals and the V1 compatibility protocol
         run: |
