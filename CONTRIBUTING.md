@@ -3,14 +3,37 @@
 ## Build and check
 
 ```sh
-v -o /tmp/visor .
-v fmt -verify .
-v test .
+v -o /tmp/visor .                    # build
+v fmt -verify .                      # format gate
+v test .                             # every module's tests
+v test vtool/                        # one module
 npx --yes markdownlint-cli2@0.23.3   # markdown gate, config in .markdownlint-cli2.jsonc
 ```
 
+`v test .` recurses into the module directories, so it is the whole suite. The
+markdown gate reads `.markdownlint-cli2.jsonc`, which carries the globs, the
+ignored trees and the rules this project switches off with a reason for each.
+
 `v fmt` is the only formatter here. Do not add a second one, and do not reformat
 code by hand into a shape `v fmt` would undo.
+
+## The smoke run
+
+`tools/lsp_smoke.vsh` starts a real visor process and speaks to it over stdio,
+which is the only place framing, the handshake, cancellation and the exit codes
+become visible. It carries its own framer rather than importing `lsp`, because a
+harness that shares framing code with the thing it tests cannot see a framing
+bug.
+
+```sh
+v -o /tmp/visor .
+v run tools/lsp_smoke.vsh --bin /tmp/visor --fixture testdata/smoke
+```
+
+It prints a line per check and exits non-zero when one fails. The fixture is
+described in `testdata/smoke/README.md`: change `client-capabilities.json` or
+`capabilities.golden.json` without the other and the comparison fails, and
+`--update-golden` rewrites the golden when a change to the response was meant.
 
 ## Layout
 
