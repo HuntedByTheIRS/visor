@@ -8,6 +8,27 @@ This grammar is heavily derived from the following language grammars:
 - [tree-sitter-ruby](https://github.com/tree-sitter/tree-sitter-ruby/)
 - [tree-sitter-c](https://github.com/tree-sitter/tree-sitter-c/)
 
+## What this copy carries
+
+This is a trimmed copy of [tree-sitter-v](https://github.com/vlang/v-analyzer) as
+v-analyzer shipped it.
+
+Kept for the build:
+
+* `src/` - the generated C parser and the headers it needs
+* `bindings/core/lib/` - the tree-sitter C library
+* `bindings/` - the V bindings, and the generator that turns node type data
+  into the `NodeType` enum
+
+Kept for readers:
+
+* `queries/` - the editor queries for V
+* `test/corpus/` - the grammar's parse fixtures
+
+Dropped, because visor is a C and V tree: the Rust, JavaScript and lldb
+bindings, the npm and Nix packaging, and the editor and pkg-config files that
+served those bindings.
+
 ## Limitations
 
 1. It does not support all deprecated/outdated syntaxes to avoid any ambiguities and to enforce the

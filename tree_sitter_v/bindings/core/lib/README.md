@@ -2,5 +2,7 @@
 
 * [`src`](./src) - C source code for the Tree-sitter library
 * [`include`](./include) - C headers for the Tree-sitter library
-* [`binding_rust`](./binding_rust) - Rust bindings to the Tree-sitter library
-* [`binding_web`](./binding_web) - JavaScript bindings to the Tree-sitter library, using WebAssembly
+
+Upstream ships Rust, JavaScript and lldb bindings beside this library. This copy
+carries none of them. Visor links the C library whole and reaches it through the
+V bindings in `../../bindings.v`.

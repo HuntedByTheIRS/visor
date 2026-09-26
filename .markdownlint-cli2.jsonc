@@ -2,7 +2,8 @@
   // markdownlint-cli2 runs bare, in CI and on a laptop, so the globs live here.
   "globs": ["**/*.md"],
   "ignores": [
-    // Vendored from upstream whole, byte for byte.
+    // A trimmed vendored copy: the markdown is upstream's, not this project's
+    // prose, and the humanizer pass does not reach into it.
     "tree_sitter_v/**",
     // Local scratch, not part of the tree.
     ".omh/**",
