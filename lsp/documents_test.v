@@ -127,6 +127,66 @@ fn test_a_position_that_splits_a_surrogate_pair_lands_before_it() {
 	}) == 5
 }
 
+fn test_an_offset_turns_back_into_the_position_it_came_from() {
+	text := 'abc\ndef\n'
+	for offset in [0, 1, 3, 4, 7, 8] {
+		pos := position_for_offset(text, offset)
+		assert offset_for(text, pos) == offset
+	}
+	assert position_for_offset(text, 3) == Position{
+		line:      0
+		character: 3
+	}
+	assert position_for_offset(text, 4) == Position{
+		line:      1
+		character: 0
+	}
+}
+
+fn test_an_offset_past_the_end_clamps_to_the_end() {
+	text := 'abc\n'
+	assert position_for_offset(text, 99) == Position{
+		line:      1
+		character: 0
+	}
+	assert position_for_offset('', 5) == Position{
+		line:      0
+		character: 0
+	}
+}
+
+fn test_an_offset_inside_a_character_reports_its_start() {
+	text := 'a\U0001F600b'
+	// the emoji covers bytes 1 to 5 and two code units
+	assert position_for_offset(text, 3) == Position{
+		line:      0
+		character: 1
+	}
+	assert position_for_offset(text, 5) == Position{
+		line:      0
+		character: 3
+	}
+	// a two byte character counts as one unit, not two
+	assert position_for_offset('héllo', 3) == Position{
+		line:      0
+		character: 2
+	}
+}
+
+fn test_the_end_of_the_text_covers_the_whole_buffer() {
+	// A whole document edit runs from the start to this position. A trailing
+	// newline puts it on the line after the last one, which is the range a
+	// client accepts for replacing everything.
+	assert position_for_offset('a\n', 2) == Position{
+		line:      1
+		character: 0
+	}
+	assert position_for_offset('a', 1) == Position{
+		line:      0
+		character: 1
+	}
+}
+
 fn test_editing_a_document_that_is_not_open_is_an_error() {
 	mut ds := open_store()
 	if _ := ds.apply_changes('file:///tmp/other.v', 2, [edit(false, 0, 0, 0, 0, 'x')]) {

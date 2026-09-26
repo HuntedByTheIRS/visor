@@ -229,6 +229,48 @@ fn utf8_width(lead u8) (int, int) {
 	return 1, 1
 }
 
+// position_for_offset is the other half of offset_for: it turns a byte offset
+// back into the position a client counts, so a feature that reads byte offsets
+// out of a parse tree can answer in the code units the wire speaks. Without it
+// every position after the first non-ASCII character is short by one unit per
+// astral character.
+//
+// An offset past the end of the text clamps to the end of it, and one that
+// lands inside a character reports where that character starts, which is what
+// offset_for does with a position that splits one.
+pub fn position_for_offset(text string, offset int) Position {
+	mut limit := offset
+	if limit < 0 {
+		limit = 0
+	}
+	if limit > text.len {
+		limit = text.len
+	}
+	mut line := 0
+	mut units := 0
+	mut at := 0
+	for at < limit {
+		if text[at] == `\n` {
+			line++
+			units = 0
+			at++
+			continue
+		}
+		width, runes := utf8_width(text[at])
+		if at + width > limit {
+			// the offset is inside this character, so the position is the one
+			// it starts at.
+			break
+		}
+		units += runes
+		at += width
+	}
+	return Position{
+		line:      line
+		character: units
+	}
+}
+
 // parse_position reads a position out of the wire shape.
 pub fn parse_position(value json2.Any) ?Position {
 	obj := as_object(value) or { return none }
