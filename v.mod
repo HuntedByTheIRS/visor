@@ -7,7 +7,7 @@
 Module {
 	name: 'visor'
 	description: 'A language server for V.'
-	version: '0.0.2'
+	version: '0.0.3'
 	license: 'MIT'
 	dependencies: []
 }

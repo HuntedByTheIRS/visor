@@ -86,17 +86,17 @@ than something you can install today.
 
 ## Features, targeted for v0.1.0
 
-| Area | What ships |
-| --- | --- |
-| Diagnostics | pushed and pulled, including over unsaved buffers |
-| Hover and completion | hover, completion, signature help |
-| Navigation | definition, declaration, type definition, implementation, references |
-| Rename | rename and prepare rename |
-| Symbols | document symbols and workspace symbols |
-| Selection and view | folding ranges, document highlight, selection range, range formatting |
-| Semantic tokens | semantic tokens, inlay hints |
-| Code actions | code actions, code lens, call hierarchy |
-| Formatting | `v fmt` verbatim |
+| Area | What ships | Status |
+| --- | --- | --- |
+| Diagnostics | pushed and pulled, including over unsaved buffers | N/A |
+| Hover and completion | hover, completion, signature help | N/A |
+| Navigation | definition, declaration, type definition, implementation, references | N/A |
+| Rename | rename and prepare rename | N/A |
+| Symbols | document symbols and workspace symbols | N/A |
+| Selection and view | folding ranges, document highlight, selection range, range formatting | N/A |
+| Semantic tokens | semantic tokens, inlay hints | N/A |
+| Code actions | code actions, code lens, call hierarchy | N/A |
+| Formatting | `v fmt` verbatim | N/A |
 
 An inline completion provider (LSP 3.18) and anything debugger shaped are out of
 scope for v0.1.0. `ROADMAP.md` carries the detail and the release cadence.
