@@ -17,6 +17,9 @@ at the roadmap.
 | the visor version | `visor --version` |
 | the compiler version | `v version` |
 | the editor and its client | VS Code or VSCodium with the visor extension, Neovim, coc.nvim, or Vim with vim-lsp |
+| the platform | your distribution and architecture; only Linux builds exist so far |
+| the steps | numbered, starting from opening the file |
+| whether it survives a manual run | start visor yourself with the V compiler on `PATH` and repeat the steps; this separates a server bug from editor wiring |
 | the smallest file or project that shows it | your own tree, trimmed until the problem is the only thing left |
 | expected against actual | what you thought would happen, and what did |
 | the server log | the client's language server output, when the failure is not visible in the editor |
