@@ -89,6 +89,31 @@ jobs:
       - name: Tests
         run: v test .
 
+      - name: Protocol smoke test
+        run: v run tools/lsp_smoke.vsh --bin /tmp/visor --fixture testdata/smoke
+
+      # The editor tests need a real editor, so one is downloaded rather than
+      # taken from the image: Ubuntu's neovim is older than the 0.11 floor the
+      # client states, and a run against the wrong version proves nothing.
+      # Both ends of the range are covered because the token highlighter is
+      # started by a different call either side of 0.12, so the branch that
+      # picks between them fails here rather than on someone's desktop. This is
+      # a step rather than a job because a second job would build V from source
+      # again to reach the binary these tests run against.
+      - name: Editor tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          editors=''
+          for version in v0.11.7 v0.12.5; do
+            curl -fsSL -o "/tmp/nvim-$version.tar.gz" \
+              "https://github.com/neovim/neovim/releases/download/$version/nvim-linux-x86_64.tar.gz"
+            mkdir -p "/tmp/nvim-$version"
+            tar -xzf "/tmp/nvim-$version.tar.gz" -C "/tmp/nvim-$version" --strip-components=1
+            editors="$editors --nvim /tmp/nvim-$version/bin/nvim"
+          done
+          v run tools/editor_test.vsh --bin /tmp/visor $editors
+
       - name: Ban compiler internals and the V1 compatibility protocol
         run: |
           if grep -rnE 'import v\.(ast|flat|parser|checker|pref|scanner)' --include='*.v' .; then
