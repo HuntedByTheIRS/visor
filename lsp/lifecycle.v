@@ -28,7 +28,7 @@ fn handle_initialize(mut s Server, req Message) Reply {
 	if options := params['initializationOptions'] {
 		s.initialization_options = options
 	}
-	negotiated := negotiate(s.client_caps)
+	negotiated := negotiate(s.client_caps, s.compiler_caps)
 	s.negotiation_notes = negotiated.notes
 	mut result := map[string]json2.Any{}
 	result['capabilities'] = json2.Any(negotiated.capabilities)

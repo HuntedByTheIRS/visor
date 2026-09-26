@@ -1,12 +1,14 @@
 module lsp
 
 import json2
+import vtool
 
 // The capability paths as the spec spells them. They are constants because a
 // typo in one of these strings is silent: the negotiation would just decide the
 // client does not have the capability.
 const cap_synchronization = 'textDocument.synchronization'
 const cap_pull_diagnostics = 'textDocument.diagnostic'
+const cap_formatting = 'textDocument.formatting'
 const cap_workspace_folders = 'workspace.workspaceFolders'
 const cap_work_done_progress = 'window.workDoneProgress'
 const cap_position_encodings = 'general.positionEncodings'
@@ -96,13 +98,14 @@ pub:
 	notes        []string
 }
 
-// negotiate builds the server capabilities from the client's list.
+// negotiate builds the server capabilities from the client's list and from what
+// the startup probe found the compiler can do.
 //
-// Two things are deliberately not advertised. The feature providers (hover,
-// completion, definition and the rest) have no handlers yet, so claiming them
-// would turn a visible MethodNotFound into an empty answer. And the 3.18 virtual
-// document provider is advertised only where content exists to serve.
-pub fn negotiate(client ClientCapabilities) Negotiation {
+// Two things are deliberately not advertised. The feature providers that have no
+// handlers yet (hover, completion, definition and the rest) would turn a visible
+// MethodNotFound into an empty answer. And the 3.18 virtual document provider is
+// advertised only where content exists to serve.
+pub fn negotiate(client ClientCapabilities, compiler ?vtool.CapabilityReport) Negotiation {
 	mut caps := map[string]json2.Any{}
 	mut notes := []string{}
 
@@ -114,6 +117,21 @@ pub fn negotiate(client ClientCapabilities) Negotiation {
 		// without that, the server has to ask for whole documents.
 		caps['textDocumentSync'] = sync_full()
 		notes << 'textDocumentSync: full, the client did not advertise ${cap_synchronization}'
+	}
+
+	if client.advertises(cap_formatting) {
+		// Claimed only when a compiler was resolved and the probe saw it rewrite
+		// a buffer. A client promised a provider that answers every save with an
+		// error is worse off than one told nothing.
+		refusal := format_refusal(compiler)
+		if refusal == '' {
+			caps['documentFormattingProvider'] = json2.Any(true)
+			notes << 'documentFormattingProvider: registered, the client advertised ${cap_formatting} and `v fmt -` rewrote the probe buffer'
+		} else {
+			notes << 'documentFormattingProvider: not registered, ${refusal}'
+		}
+	} else {
+		notes << 'documentFormattingProvider: not registered, the client did not offer ${cap_formatting}'
 	}
 
 	if client.flag(cap_workspace_folders) {
@@ -163,6 +181,17 @@ pub fn negotiate(client ClientCapabilities) Negotiation {
 		capabilities: caps
 		notes:        notes
 	}
+}
+
+// format_refusal says why formatting cannot be promised to this client, or
+// nothing at all when it can. The reason is what the negotiation note carries,
+// so "why is formatting missing" is answerable from a log line.
+fn format_refusal(compiler ?vtool.CapabilityReport) string {
+	report := compiler or { return 'no compiler was resolved at startup' }
+	if !report.supports(.format) {
+		return 'the compiler cannot format: ${report.detail_of(.format)}'
+	}
+	return ''
 }
 
 // client_pulls_configuration reports whether the server may ask the client for

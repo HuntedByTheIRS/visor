@@ -8,6 +8,7 @@
         "interFileDependencies": false,
         "workspaceDiagnostics": false
       },
+      "documentFormattingProvider": true,
       "positionEncoding": "utf-16",
       "textDocumentSync": {
         "change": 2,
@@ -26,7 +27,7 @@
     },
     "serverInfo": {
       "name": "visor",
-      "version": "0.0.3"
+      "version": "0.0.4"
     }
   }
 }

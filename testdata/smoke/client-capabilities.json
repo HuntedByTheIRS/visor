@@ -12,6 +12,9 @@
     "hover": {
       "dynamicRegistration": false
     },
+    "formatting": {
+      "dynamicRegistration": false
+    },
     "synchronization": {
       "dynamicRegistration": false
     }

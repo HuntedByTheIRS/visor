@@ -4,7 +4,7 @@ module lsp
 // the negotiation tests use: a client that offers everything this build acts on,
 // and one that offers synchronization only.
 const asks_for_everything = '{"workspace":{"workspaceFolders":true,"configuration":true},' +
-	'"textDocument":{"synchronization":{},"diagnostic":{}},' +
+	'"textDocument":{"synchronization":{},"diagnostic":{},"formatting":{}},' +
 	'"window":{"workDoneProgress":true}}'
 const asks_for_sync_only = '{"textDocument":{"synchronization":{}}}'
 
@@ -46,11 +46,31 @@ fn test_a_client_that_offers_less_gets_a_smaller_capability_set() {
 	_, thin := initialized_server(asks_for_sync_only)
 	rich_sink, rich := initialized_server(asks_for_everything)
 	_ = rich_sink
-	full := negotiate(rich.client_announced()).capabilities
-	small := negotiate(thin.client_announced()).capabilities
+	full := negotiate(rich.client_announced(), none).capabilities
+	small := negotiate(thin.client_announced(), none).capabilities
 	assert full.len > small.len
 	assert 'workspace' !in small
 	assert 'workspace' in full
+}
+
+fn test_initialize_advertises_formatting_only_once_a_compiler_is_probed() {
+	// The negotiation reads the probe rather than the compiler's path, so a
+	// server that never probed has no formatting to offer. This is the pair: the
+	// same client and the same fixture, with and without the probe.
+	unprobed_sink, unprobed := initialized_server(asks_for_everything)
+	_ = unprobed_sink
+	assert 'documentFormattingProvider' !in negotiate(unprobed.client_announced(), none).capabilities
+
+	mut probed_sink := &BufferSink{}
+	mut probed := new_server(probed_sink)
+	probed.probe_compiler()
+	probed.serve_message(parse_message('{"jsonrpc":"2.0","id":1,"method":"initialize","params":' +
+		'{"capabilities":${asks_for_everything}}}'))
+	result := as_object(probed_sink.last_message().result) or { panic('no result') }
+	caps := as_object(result['capabilities'] or { panic('no capabilities') }) or {
+		panic('capabilities is not an object')
+	}
+	assert 'documentFormattingProvider' in caps
 }
 
 fn test_the_negotiation_notes_are_kept_for_the_log() {

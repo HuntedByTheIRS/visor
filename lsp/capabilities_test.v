@@ -1,6 +1,7 @@
 module lsp
 
 import json2
+import vtool
 
 // A 3.17 client that advertises synchronization but none of the optional server
 // features. It is the shape a minimal editor sends.
@@ -18,6 +19,11 @@ const rich_client = '{"workspace":{"workspaceFolders":true,"configuration":true,
 // A client that advertises nothing at all.
 const bare_client = '{}'
 
+// A client that offers synchronization and formatting, which is the shape an
+// editor with save hooks sends.
+const formatting_client = '{"textDocument":{"synchronization":{"dynamicRegistration":true},' +
+	'"formatting":{"dynamicRegistration":false}}}'
+
 fn client_for(client_capabilities string) ClientCapabilities {
 	body := '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":${client_capabilities}}}'
 	params := parse_message(body).params
@@ -27,7 +33,42 @@ fn client_for(client_capabilities string) ClientCapabilities {
 }
 
 fn caps_from(client_capabilities string) map[string]json2.Any {
-	return negotiate(client_for(client_capabilities)).capabilities
+	// most of these tests are about negotiation that the compiler has no say in
+	return negotiate(client_for(client_capabilities), none).capabilities
+}
+
+// caps_with says what the compiler can do, so a test can check the decisions
+// that depend on it without one being installed.
+fn caps_with(client_capabilities string, compiler ?vtool.CapabilityReport) map[string]json2.Any {
+	return negotiate(client_for(client_capabilities), compiler).capabilities
+}
+
+// A probe report from a compiler that formats.
+fn compiler_that_formats() vtool.CapabilityReport {
+	return vtool.CapabilityReport{
+		v_version: 'V 0.5.2 test'
+		items:     {
+			'format': vtool.Capability{
+				kind:   .format
+				status: .supported
+				detail: 'rewrote the probe buffer'
+			}
+		}
+	}
+}
+
+// A probe report from a compiler that ran and did not format.
+fn compiler_that_cannot_format() vtool.CapabilityReport {
+	return vtool.CapabilityReport{
+		v_version: 'V 0.5.2 test'
+		items:     {
+			'format': vtool.Capability{
+				kind:   .format
+				status: .unsupported
+				detail: 'accepted the invocation and wrote nothing back'
+			}
+		}
+	}
 }
 
 fn object_at(obj map[string]json2.Any, key string) map[string]json2.Any {
@@ -111,7 +152,7 @@ fn test_a_three_eighteen_client_gets_no_virtual_document_provider() {
 	// nothing to serve, so the provider stays out of the response.
 	eighteen := '{"workspace":{"textDocumentContent":{"schemes":["visor"]}}}'
 	assert 'textDocumentContentProvider' !in caps_from(eighteen)
-	notes := negotiate(client_for(eighteen)).notes
+	notes := negotiate(client_for(eighteen), none).notes
 	mut mentioned := false
 	for note in notes {
 		if note.contains('textDocumentContentProvider') {
@@ -157,11 +198,12 @@ fn test_configuration_offers_are_read_from_the_client_side() {
 }
 
 fn test_every_decision_is_written_down() {
-	notes := negotiate(client_for(bare_client)).notes
+	notes := negotiate(client_for(bare_client), none).notes
 	// one line per capability considered, so a support question has an answer
-	// without re-reading the negotiation. Four is what a client that offered
-	// nothing gets: sync, workspace folders, diagnostics and progress.
-	assert notes.len == 4
+	// without re-reading the negotiation. Five is what a client that offered
+	// nothing gets: sync, formatting, workspace folders, diagnostics and
+	// progress.
+	assert notes.len == 5
 	mut sync_note := ''
 	for note in notes {
 		if note.starts_with('textDocumentSync:') {
@@ -170,4 +212,26 @@ fn test_every_decision_is_written_down() {
 	}
 	assert sync_note.contains('full')
 	assert sync_note.contains('did not advertise')
+}
+
+fn test_formatting_is_registered_when_the_client_and_the_compiler_allow_it() {
+	caps := caps_with(formatting_client, compiler_that_formats())
+	assert is_true(caps, 'documentFormattingProvider')
+}
+
+fn test_formatting_is_not_registered_when_the_client_did_not_offer_it() {
+	caps := caps_from(thin_client)
+	assert 'documentFormattingProvider' !in caps
+}
+
+fn test_formatting_is_not_registered_when_the_compiler_cannot_do_it() {
+	caps := caps_with(formatting_client, compiler_that_cannot_format())
+	assert 'documentFormattingProvider' !in caps
+	notes := negotiate(client_for(formatting_client), compiler_that_cannot_format()).notes
+	assert notes.any(it.contains('the compiler cannot format'))
+}
+
+fn test_a_session_with_no_compiler_says_so_in_the_notes() {
+	notes := negotiate(client_for(formatting_client), none).notes
+	assert notes.any(it.contains('no compiler was resolved at startup'))
 }
