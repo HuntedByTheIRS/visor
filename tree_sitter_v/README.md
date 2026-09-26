@@ -15,14 +15,19 @@ v-analyzer shipped it.
 
 Kept for the build:
 
-* `src/` - the generated C parser and the headers it needs
-* `bindings/core/lib/` - the tree-sitter C library
-* `bindings/` - the V bindings, and the generator that turns node type data
+* `src/parser.c` - the generated parser, with the headers it includes
+* `src/node-types.json` - the node types `bindings/generate_types.vsh` turns
   into the `NodeType` enum
+* `bindings/core/lib/` - the tree-sitter C library
+* `bindings/` - the V bindings over both
 
-Dropped, because visor is a C and V tree: the Rust, JavaScript and lldb
-bindings, the npm and Nix packaging, and the editor and pkg-config files that
-served those bindings.
+Dropped, because visor is a C and V tree: the grammar source in JavaScript and
+its JSON dump, the Rust, JavaScript and lldb bindings, the npm and Nix
+packaging, the editor queries, the grammar's parse fixtures, and the editor and
+pkg-config files that served those bindings.
+
+A grammar change means re-vendoring from tree-sitter-v: nothing here generates
+`src/parser.c` any more.
 
 ## Limitations
 
