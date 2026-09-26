@@ -73,6 +73,13 @@ jobs:
       - name: Build visor
         run: v -o /tmp/visor .
 
+      # The gate lives in front of the slower steps so a warning fails the job
+      # before the tests run. It is a step rather than a job of its own because
+      # a second job would build V from source again to reproduce a fourteen
+      # second check.
+      - name: Warnings gate
+        run: v run tools/check_warnings.vsh
+
       - name: Version probe
         run: /tmp/visor --version
 
