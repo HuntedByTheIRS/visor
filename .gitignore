@@ -16,4 +16,44 @@
 /visor_linux_*
 
 # ---> local tooling state
+# Agent tooling keeps rules, prompts, skills and chat history in a directory
+# named after the tool. That is state for whoever is working in the tree, not
+# part of it, and `git add -f` is there for a rules file the project decides to
+# share. Aider writes its history beside the config file instead of in a
+# directory of its own.
+.aider*
+.agent/
+.agents/
+.amazonq/
+.augment/
+.claude/
+.cline/
+.clinerules/
+.codebuddy/
+.codex/
+.cognition/
+.cody/
+.continue/
+.cursor/
+.factory/
+.gemini/
+.iflow/
+.junie/
+.kilocode/
+.kiro/
+.kode/
 .omh/
+.omo/
+.omx/
+.opencode/
+.openhands/
+.pi/
+.qwen/
+.roo/
+.ruler/
+.specstory/
+.tabnine/
+.trae/
+.vibe/
+.windsurf/
+.zed/
