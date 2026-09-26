@@ -3,7 +3,7 @@
 ## Shape
 
 ```text
-editors/code (TypeScript, vscode-languageclient)   editors/nvim, editors/vim
+plugins/nvim (Lua, vim.lsp)            plugins/code, plugins/vim (later)
                  \                                    /
                   \       JSON-RPC over stdio        /
                    v                                v
@@ -28,9 +28,9 @@ Modules import downward only. `vtool/` and `engine/` know nothing about the
 protocol, `features/` reads the engine and answers questions, and `lsp/` owns the
 wire. Nothing imports `main`.
 
-`lsp/`, `vtool/`, `engine/` and `main.v` exist today. `features/`, `diag/` and
-the editor clients are the shape being built toward, and the state column below
-says which modules have landed.
+`lsp/`, `vtool/`, `engine/`, `main.v` and the Neovim client in `plugins/nvim`
+exist today. `features/`, `diag/` and the other editor clients are the shape
+being built toward, and the state column below says which modules have landed.
 
 | Module | State | Owns | Imports from this tree |
 | --- | --- | --- | --- |
@@ -40,6 +40,7 @@ says which modules have landed.
 | `diag/` | planned | debounce, one check in flight per module root, cancellation | `vtool/` |
 | `features/` | planned | the feature list in the README | `engine/` |
 | `main.v` | in the tree | the entry point and the stdio loop | `lsp/` |
+| `plugins/nvim/` | in the tree | the Neovim client: server search and attach | nothing, it speaks the protocol |
 
 ## Hard rules
 

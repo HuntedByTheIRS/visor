@@ -132,7 +132,13 @@ v -o visor .
 
 ## Editors
 
-A VS Code and VSCodium extension and a Neovim configuration are planned for
+Everything an editor needs is the protocol, so this repository ships one client
+and the rest of the protocol. [`plugins/nvim`](plugins/nvim) is the Neovim
+plugin: it finds the server on `PATH` or through `$VISOR_BIN`, attaches a client
+to a V buffer, and starts no process until a V buffer opens. Its README carries
+the settings and the commands.
+
+A VS Code and VSCodium extension and a Vim configuration are planned after
 v0.1.0. Both will find the server themselves.
 
 ## Contributing
