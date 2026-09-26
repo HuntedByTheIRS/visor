@@ -72,11 +72,17 @@ stays MIT.
 ## Status
 
 Pre-release, and honest about it. The repository builds, CI runs on every push
-to `main`, and the protocol core answers `initialize`, `shutdown` and `exit`
-over stdio. Requests that need semantics still come back as `MethodNotFound`,
-because wiring the engine to the features is the work in progress. Everything
-under Features is the v0.1.0 target rather than something you can install
-today.
+to `main`, and the protocol core serves the session over stdio: `initialize`,
+`initialized`, `shutdown`, `exit`, the four document sync notifications, and the
+two workspace notifications for folders and configuration.
+
+`textDocument/diagnostic` is the one method the server knows and cannot answer.
+It comes back as a request-failed error naming the diagnostics lane rather than
+as an empty diagnostic list, because an empty list reads as a file with no
+problems. The feature providers are not advertised in `initialize`, so hover,
+completion and the rest answer `MethodNotFound`, and wiring the engine to them
+is the work in progress. Everything under Features is the v0.1.0 target rather
+than something you can install today.
 
 ## Features, targeted for v0.1.0
 
