@@ -228,7 +228,7 @@ const supertype__expression_with_blocks_nodes = [
 	.sql_expression,
 	.type_initializer,
 	.unsafe_expression,
-]
+]!
 
 const supertype__statement_nodes = [
 	NodeType.append_statement,
@@ -246,7 +246,7 @@ const supertype__statement_nodes = [
 	.return_statement,
 	.send_statement,
 	.simple_statement,
-]
+]!
 
 const supertype__top_level_declaration_nodes = [
 	NodeType.const_declaration,
@@ -257,8 +257,9 @@ const supertype__top_level_declaration_nodes = [
 	.static_method_declaration,
 	.struct_declaration,
 	.type_declaration,
-]
+]!
 
+// group returns the supertype this node type belongs to.
 pub fn (typ NodeType) group() SuperType {
 	return if typ in supertype__top_level_declaration_nodes {
 		SuperType.top_level_declaration
@@ -285,13 +286,13 @@ const declaration_node_types = [
 	.type_declaration,
 	.type_parameter_declaration,
 	.var_declaration,
-]
+]!
 
 const identifier_node_types = [
 	NodeType.mutable_identifier,
 	.identifier,
 	.pseudo_compile_time_identifier,
-]
+]!
 
 const literal_node_types = [
 	NodeType.c_string_literal,
@@ -301,16 +302,19 @@ const literal_node_types = [
 	.float_literal,
 	.int_literal,
 	.rune_literal,
-]
+]!
 
+// is_declaration reports whether this node type declares something.
 pub fn (typ NodeType) is_declaration() bool {
 	return typ in declaration_node_types
 }
 
+// is_identifier reports whether this node type names an identifier.
 pub fn (typ NodeType) is_identifier() bool {
 	return typ in identifier_node_types
 }
 
+// is_literal reports whether this node type is a literal.
 pub fn (typ NodeType) is_literal() bool {
 	return typ in literal_node_types
 }
@@ -319,6 +323,8 @@ pub const type_factory = &VNodeTypeFactory{}
 
 pub struct VNodeTypeFactory {}
 
+// get_type maps the type name a grammar reports to its NodeType.
+// Names the grammar does not carry come back as NodeType.unknown.
 pub fn (nf VNodeTypeFactory) get_type(type_name string) NodeType {
 	return node_type_name_to_enum[type_name] or { NodeType.unknown }
 }

@@ -57,7 +57,7 @@ fn new_ts_parser() &C.TSParser {
 
 @[inline]
 fn (mut p C.TSParser) parse(old_tree &TSTree, input C.TSInput) &TSTree {
-	return &TSTree(C.ts_parser_parse(p, voidptr(old_tree), input))
+	return unsafe { &TSTree(C.ts_parser_parse(p, voidptr(old_tree), input)) }
 }
 
 @[inline]
@@ -82,7 +82,7 @@ fn (mut p C.TSParser) parse_string_with_old_tree(content string, old_tree &TSTre
 
 @[inline]
 fn (mut p C.TSParser) parse_string_with_old_tree_and_len(content string, old_tree &TSTree, len u32) &TSTree {
-	return &TSTree(C.ts_parser_parse_string(p, voidptr(old_tree), &char(content.str), len))
+	return unsafe { &TSTree(C.ts_parser_parse_string(p, voidptr(old_tree), &char(content.str), len)) }
 }
 
 @[inline]
@@ -90,8 +90,10 @@ fn (mut p C.TSParser) parse_bytes(content []u8) &TSTree {
 	return p.parse_bytes_with_old_tree(content, &TSTree(unsafe { nil }))
 }
 
-fn byte_array_input_read(pl voidptr, byte_index u32, position C.TSPoint, bytes_read &u32) &char {
-	payload := *(&[]u8(pl))
+// byte_array_input_read is the read callback for a parser fed from a byte
+// array. The TSPoint argument is part of the C signature and goes unused here.
+fn byte_array_input_read(pl voidptr, byte_index u32, _ C.TSPoint, bytes_read &u32) &char {
+	payload := unsafe { *(&[]u8(pl)) }
 	if byte_index >= u32(payload.len) {
 		unsafe {
 			*bytes_read = 0
@@ -140,22 +142,23 @@ fn C.ts_tree_get_changed_ranges(old_tree &C.TSTree, new_tree &C.TSTree, count &u
 
 @[inline]
 fn (tree &TSTree) copy() &TSTree {
-	return &TSTree(C.ts_tree_copy(voidptr(tree)))
+	return unsafe { &TSTree(C.ts_tree_copy(voidptr(tree))) }
 }
 
 @[inline]
 fn (tree &TSTree) root_node() C.TSNode {
-	return C.ts_tree_root_node(&C.TSTree(tree))
+	return C.ts_tree_root_node(unsafe { &C.TSTree(tree) })
 }
 
 @[inline]
 fn (tree &TSTree) edit(input_edit &C.TSInputEdit) {
-	C.ts_tree_edit(&C.TSTree(tree), input_edit)
+	C.ts_tree_edit(unsafe { &C.TSTree(tree) }, input_edit)
 }
 
 fn (tree &TSTree) get_changed_ranges(new_tree &TSTree) []C.TSRange {
 	mut len := u32(0)
-	buf := C.ts_tree_get_changed_ranges(&C.TSTree(tree), &C.TSTree(new_tree), &len)
+	buf := C.ts_tree_get_changed_ranges(unsafe { &C.TSTree(tree) }, unsafe { &C.TSTree(new_tree) },
+		&len)
 	element_size := int(sizeof(C.TSRange))
 
 	return unsafe {
@@ -218,6 +221,8 @@ fn C.ts_node_named_descendant_for_point_range(node C.TSNode, start_point C.TSPoi
 
 fn C.ts_node_eq(node C.TSNode, another_node C.TSNode) bool
 
+// text returns the source text this node covers, and an empty string when
+// the range falls outside the text it was given.
 pub fn (node C.TSNode) text(text string) string {
 	start_index := node.start_byte()
 	end_index := node.end_byte()
@@ -237,6 +242,7 @@ fn (node C.TSNode) sexpr_str() string {
 	return unsafe { sexpr.vstring() }
 }
 
+// text_length returns how many bytes the node covers.
 @[inline]
 pub fn (node C.TSNode) text_length() u32 {
 	start := node.start_byte()
@@ -244,6 +250,8 @@ pub fn (node C.TSNode) text_length() u32 {
 	return end - start
 }
 
+// start_point returns the row and column the node starts at, and 0,0 for a
+// null node.
 @[inline]
 pub fn (node C.TSNode) start_point() C.TSPoint {
 	if node.is_null() {
@@ -287,6 +295,8 @@ fn (node C.TSNode) range() C.TSRange {
 	}
 }
 
+// type_name returns the grammar type name, and a marker when the node is
+// null.
 pub fn (node C.TSNode) type_name() string {
 	if node.is_null() {
 		return '<null node>'
@@ -330,6 +340,7 @@ fn (node C.TSNode) is_error() bool {
 // V 0.5.2 resolves a method on the receiver of a C struct method but not on a
 // local of that C struct type, so the checks on locals below call the C
 // functions the methods forward to.
+// parent_nth walks up this many parents, none when the tree ends first.
 pub fn (node C.TSNode) parent_nth(depth int) ?TSNode {
 	if node.is_null() {
 		return none
@@ -344,6 +355,8 @@ pub fn (node C.TSNode) parent_nth(depth int) ?TSNode {
 	return res
 }
 
+// parent returns the node above this one, none for a null node or the
+// root.
 pub fn (node C.TSNode) parent() ?C.TSNode {
 	if node.is_null() {
 		return none
@@ -355,6 +368,7 @@ pub fn (node C.TSNode) parent() ?C.TSNode {
 	return parent
 }
 
+// first_child returns the first child, none when there is none.
 pub fn (node C.TSNode) first_child() ?C.TSNode {
 	if node.is_null() {
 		return none
@@ -370,6 +384,7 @@ pub fn (node C.TSNode) first_child() ?C.TSNode {
 	return child
 }
 
+// last_child returns the last child, none when there is none.
 pub fn (node C.TSNode) last_child() ?C.TSNode {
 	if node.is_null() {
 		return none
@@ -419,6 +434,7 @@ fn (node C.TSNode) named_child_count() u32 {
 	return C.ts_node_named_child_count(node)
 }
 
+// child_by_field_name returns the child in the named grammar field.
 pub fn (node C.TSNode) child_by_field_name(name string) ?C.TSNode {
 	if node.is_null() {
 		return none
@@ -545,6 +561,7 @@ fn C.ts_tree_cursor_new(node C.TSNode) C.TSTreeCursor
 
 pub type TSTreeCursor = C.TSTreeCursor
 
+// tree_cursor starts a cursor at this node.
 @[inline]
 pub fn (node C.TSNode) tree_cursor() TSTreeCursor {
 	return C.ts_tree_cursor_new(node)
@@ -567,6 +584,7 @@ fn C.ts_tree_cursor_goto_first_child(cursor &C.TSTreeCursor) bool
 fn C.ts_tree_cursor_first_child_for_byte(cursor &C.TSTreeCursor, idx u32) i64
 fn C.ts_tree_cursor_copy(cursor &C.TSTreeCursor) C.TSTreeCursor
 
+// delete releases the cursor.
 @[inline; unsafe]
 pub fn (cursor &C.TSTreeCursor) delete() {
 	C.ts_tree_cursor_delete(cursor)
@@ -579,6 +597,8 @@ fn (mut cursor C.TSTreeCursor) reset(node C.TSNode) {
 
 pub type TSNode = C.TSNode
 
+// current_node returns the node the cursor points at, none when it points
+// at nothing.
 @[inline]
 pub fn (cursor &C.TSTreeCursor) current_node() ?TSNode {
 	got_node := C.ts_tree_cursor_current_node(cursor)
@@ -588,22 +608,27 @@ pub fn (cursor &C.TSTreeCursor) current_node() ?TSNode {
 	return got_node
 }
 
+// current_field_name returns the grammar field the cursor sits on.
 @[inline]
 pub fn (cursor &C.TSTreeCursor) current_field_name() string {
 	c := &char(C.ts_tree_cursor_current_field_name(cursor))
 	return unsafe { c.vstring() }
 }
 
+// to_parent moves the cursor to the parent, false when it cannot.
 @[inline]
 pub fn (mut cursor C.TSTreeCursor) to_parent() bool {
 	return C.ts_tree_cursor_goto_parent(cursor)
 }
 
+// next moves the cursor to the next sibling, false when there is none.
 @[inline]
 pub fn (mut cursor C.TSTreeCursor) next() bool {
 	return C.ts_tree_cursor_goto_next_sibling(cursor)
 }
 
+// to_first_child moves the cursor to the first child, false when there is
+// none.
 @[inline]
 pub fn (mut cursor C.TSTreeCursor) to_first_child() bool {
 	return C.ts_tree_cursor_goto_first_child(cursor)
@@ -656,6 +681,7 @@ fn (left_range C.TSRange) eq(right_range C.TSRange) bool {
 // that answer none for a null node, are therefore written out here as plain
 // functions. The methods above stay for callers that hold the node as a
 // receiver.
+// ts_node_type_name returns the grammar type name of a node.
 pub fn ts_node_type_name(node C.TSNode) string {
 	if C.ts_node_is_null(node) {
 		return '<null node>'
@@ -664,6 +690,7 @@ pub fn ts_node_type_name(node C.TSNode) string {
 	return unsafe { c.vstring() }
 }
 
+// ts_node_sexpr returns the node and its children as an s-expression.
 pub fn ts_node_sexpr(node C.TSNode) string {
 	if C.ts_node_is_null(node) {
 		return '<null node>'
@@ -672,6 +699,7 @@ pub fn ts_node_sexpr(node C.TSNode) string {
 	return unsafe { sexpr.vstring() }
 }
 
+// ts_node_text returns the source text a node covers, read out of text.
 pub fn ts_node_text(node C.TSNode, text string) string {
 	if C.ts_node_is_null(node) {
 		return ''
@@ -684,6 +712,7 @@ pub fn ts_node_text(node C.TSNode, text string) string {
 	return text.substr(int(start_index), int(end_index))
 }
 
+// ts_node_parent returns the parent of a node.
 pub fn ts_node_parent(node C.TSNode) ?C.TSNode {
 	if C.ts_node_is_null(node) {
 		return none
@@ -695,6 +724,7 @@ pub fn ts_node_parent(node C.TSNode) ?C.TSNode {
 	return parent
 }
 
+// ts_node_child returns the child at an index.
 pub fn ts_node_child(node C.TSNode, index u32) ?C.TSNode {
 	if C.ts_node_is_null(node) {
 		return none
@@ -706,6 +736,8 @@ pub fn ts_node_child(node C.TSNode, index u32) ?C.TSNode {
 	return child
 }
 
+// ts_node_named_child returns the named child at an index, with anonymous
+// children skipped.
 pub fn ts_node_named_child(node C.TSNode, index u32) ?C.TSNode {
 	if C.ts_node_is_null(node) {
 		return none
@@ -717,6 +749,7 @@ pub fn ts_node_named_child(node C.TSNode, index u32) ?C.TSNode {
 	return child
 }
 
+// ts_node_child_by_field_name returns the child in a grammar field.
 pub fn ts_node_child_by_field_name(node C.TSNode, name string) ?C.TSNode {
 	if C.ts_node_is_null(node) {
 		return none
@@ -728,6 +761,7 @@ pub fn ts_node_child_by_field_name(node C.TSNode, name string) ?C.TSNode {
 	return child
 }
 
+// ts_node_next_sibling returns the sibling after a node.
 pub fn ts_node_next_sibling(node C.TSNode) ?C.TSNode {
 	if C.ts_node_is_null(node) {
 		return none
@@ -739,6 +773,7 @@ pub fn ts_node_next_sibling(node C.TSNode) ?C.TSNode {
 	return sibling
 }
 
+// ts_node_prev_sibling returns the sibling before a node.
 pub fn ts_node_prev_sibling(node C.TSNode) ?C.TSNode {
 	if C.ts_node_is_null(node) {
 		return none
@@ -750,6 +785,7 @@ pub fn ts_node_prev_sibling(node C.TSNode) ?C.TSNode {
 	return sibling
 }
 
+// ts_node_next_named_sibling returns the next sibling with a grammar name.
 pub fn ts_node_next_named_sibling(node C.TSNode) ?C.TSNode {
 	if C.ts_node_is_null(node) {
 		return none
@@ -761,6 +797,8 @@ pub fn ts_node_next_named_sibling(node C.TSNode) ?C.TSNode {
 	return sibling
 }
 
+// ts_node_prev_named_sibling returns the previous sibling with a grammar
+// name.
 pub fn ts_node_prev_named_sibling(node C.TSNode) ?C.TSNode {
 	if C.ts_node_is_null(node) {
 		return none
@@ -772,6 +810,8 @@ pub fn ts_node_prev_named_sibling(node C.TSNode) ?C.TSNode {
 	return sibling
 }
 
+// ts_node_first_child_for_byte returns the first child starting at or after
+// a byte offset.
 pub fn ts_node_first_child_for_byte(node C.TSNode, offset u32) ?C.TSNode {
 	if C.ts_node_is_null(node) {
 		return none
@@ -783,6 +823,7 @@ pub fn ts_node_first_child_for_byte(node C.TSNode, offset u32) ?C.TSNode {
 	return child
 }
 
+// ts_node_first_named_child_for_byte does the same over named children.
 pub fn ts_node_first_named_child_for_byte(node C.TSNode, offset u32) ?C.TSNode {
 	if C.ts_node_is_null(node) {
 		return none
@@ -794,6 +835,8 @@ pub fn ts_node_first_named_child_for_byte(node C.TSNode, offset u32) ?C.TSNode {
 	return child
 }
 
+// ts_node_descendant_for_byte_range returns the smallest node covering a
+// byte range.
 pub fn ts_node_descendant_for_byte_range(node C.TSNode, start_range u32, end_range u32) ?C.TSNode {
 	if C.ts_node_is_null(node) {
 		return none
@@ -805,6 +848,8 @@ pub fn ts_node_descendant_for_byte_range(node C.TSNode, start_range u32, end_ran
 	return desc
 }
 
+// ts_node_descendant_for_point_range does the same for a row and column
+// range.
 pub fn ts_node_descendant_for_point_range(node C.TSNode, start_point C.TSPoint, end_point C.TSPoint) ?C.TSNode {
 	if C.ts_node_is_null(node) {
 		return none
@@ -816,6 +861,8 @@ pub fn ts_node_descendant_for_point_range(node C.TSNode, start_point C.TSPoint, 
 	return desc
 }
 
+// ts_node_named_descendant_for_byte_range returns the smallest named node
+// covering a byte range.
 pub fn ts_node_named_descendant_for_byte_range(node C.TSNode, start_range u32, end_range u32) ?C.TSNode {
 	if C.ts_node_is_null(node) {
 		return none
@@ -827,6 +874,8 @@ pub fn ts_node_named_descendant_for_byte_range(node C.TSNode, start_range u32, e
 	return desc
 }
 
+// ts_node_named_descendant_for_point_range does the same for a row and
+// column range.
 pub fn ts_node_named_descendant_for_point_range(node C.TSNode, start_point C.TSPoint, end_point C.TSPoint) ?C.TSNode {
 	if C.ts_node_is_null(node) {
 		return none
@@ -838,11 +887,13 @@ pub fn ts_node_named_descendant_for_point_range(node C.TSNode, start_point C.TSP
 	return desc
 }
 
+// ts_cursor_field_name returns the grammar field the cursor sits on.
 pub fn ts_cursor_field_name(cursor &C.TSTreeCursor) string {
 	c := &char(C.ts_tree_cursor_current_field_name(cursor))
 	return unsafe { c.vstring() }
 }
 
+// ts_cursor_current_node returns the node the cursor points at.
 pub fn ts_cursor_current_node(cursor &C.TSTreeCursor) ?C.TSNode {
 	got_node := C.ts_tree_cursor_current_node(cursor)
 	if C.ts_node_is_null(got_node) {
@@ -851,6 +902,8 @@ pub fn ts_cursor_current_node(cursor &C.TSTreeCursor) ?C.TSNode {
 	return got_node
 }
 
+// ts_parser_parse_string parses source under an optional old tree and
+// returns the new tree.
 pub fn ts_parser_parse_string(parser &C.TSParser, source string, old_tree &TSTree) &TSTree {
 	return unsafe { &TSTree(C.ts_parser_parse_string(parser, voidptr(old_tree), &char(source.str), u32(source.len))) }
 }

@@ -24,7 +24,7 @@ fn write_enum_member(mut wr strings.Builder, type_name string, member_name strin
 	wr.write_string('${type_name}.${escape_name(member_name)}')
 }
 
-fn write_enum_array(mut wr strings.Builder, enum_type_name string, list []string) {
+fn write_enum_array(mut wr strings.Builder, enum_type_name string, list []string, fixed bool) {
 	wr.writeln('[')
 	for i, name in list {
 		wr.write_string('   ')
@@ -39,11 +39,16 @@ fn write_enum_array(mut wr strings.Builder, enum_type_name string, list []string
 		wr.write_u8(`\n`)
 	}
 	wr.write_u8(`]`)
+	if fixed {
+		wr.write_u8(`!`)
+	}
 }
 
 fn write_const_enum_array(mut wr strings.Builder, var_name string, enum_type_name string, list []string) {
+	// A fixed array, because every one of these lists is known at generation
+	// time and the compiler notices the difference.
 	wr.write_string('\nconst ${var_name} = ')
-	write_enum_array(mut wr, enum_type_name, list)
+	write_enum_array(mut wr, enum_type_name, list, true)
 	wr.write_u8(`\n`)
 }
 
@@ -120,11 +125,13 @@ for supertype_name, supertype_node_types in supertype_node_groups {
 	for type_member in super_type_members {
 		sb.write_string('merge(supertype_${type_member}_nodes, ')
 	}
-	write_enum_array(mut sb, node_type_enum_name, supertype_node_types.filter(!it.starts_with('_')))
+	write_enum_array(mut sb, node_type_enum_name, supertype_node_types.filter(!it.starts_with('_')),
+		super_type_members.len == 0)
 	sb.writeln(')'.repeat(super_type_members.len))
 }
 
 sb.write_string('\n')
+sb.write_string('// group returns the supertype this node type belongs to.\n')
 sb.write_string('pub fn (typ ${node_type_enum_name}) group() ${super_type_enum_name} {')
 sb.write_string('   return ')
 
@@ -158,8 +165,11 @@ write_const_enum_array(mut sb, 'identifier_node_types', node_type_enum_name, ide
 write_const_enum_array(mut sb, 'literal_node_types', node_type_enum_name, literal_node_types)
 
 sb.writeln('\n')
+sb.writeln('// is_declaration reports whether this node type declares something.')
 sb.writeln('pub fn (typ ${node_type_enum_name}) is_declaration() bool { return typ in declaration_node_types }')
+sb.writeln('// is_identifier reports whether this node type names an identifier.')
 sb.writeln('pub fn (typ ${node_type_enum_name}) is_identifier() bool { return typ in identifier_node_types }')
+sb.writeln('// is_literal reports whether this node type is a literal.')
 sb.writeln('pub fn (typ ${node_type_enum_name}) is_literal() bool { return typ in literal_node_types }')
 
 // create VNodeTypeFactory
@@ -170,8 +180,10 @@ sb.writeln('pub const type_factory = &${node_type_factory_sym_name}{}')
 sb.writeln('\n')
 sb.writeln('pub struct ${node_type_factory_sym_name} {}')
 sb.writeln('\n')
+sb.writeln('// get_type maps the type name a grammar reports to its NodeType.')
+sb.writeln('// Names the grammar does not carry come back as NodeType.unknown.')
 sb.writeln('pub fn (nf ${node_type_factory_sym_name}) get_type(type_name string) ${node_type_enum_name} {')
-sb.writeln('   return bindings.node_type_name_to_enum[type_name] or { NodeType.unknown }')
+sb.writeln('   return node_type_name_to_enum[type_name] or { NodeType.unknown }')
 sb.writeln('}')
 sb.writeln('\n')
 sb.writeln('const node_type_name_to_enum = {')
