@@ -47,6 +47,13 @@ server starts for the first V buffer that opens.
 and a project whose own format gate disagrees has a reason to run
 `:VisorFormat` by hand instead.
 
+`semantic_tokens` is on because the server only advertises the provider when it
+can serve it. Highlighting covers what the parse tree can name on its own:
+declarations, the types they mention, literals, comments, attributes, keywords
+and operators. A call to a function is not among them, because telling a call
+from a field of the same name needs the index rather than the tree, so the
+editor's own syntax highlighting keeps covering those.
+
 ## Commands
 
 | Command | What it does |
@@ -63,17 +70,19 @@ plugin found, and one line per client with its version and root.
 ## What is proven
 
 `test/run.sh` starts a headless Neovim with this directory on the runtimepath
-and a real server behind it:
+and a real server behind it. With no script named it runs all three:
 
 ```sh
 plugins/nvim/test/run.sh --bin /tmp/visor
 ```
 
-It checks that a V buffer brings a client through initialize, that the root
-search lands on the project and falls back to the buffer's directory when there
-is no marker, that two projects are two clients, that `on_attach` ran, and that
-`:VisorInfo` and `stop()` report what actually happened. Nothing in it mocks the
-protocol.
+| Script | What it settles |
+| --- | --- |
+| `connect.lua` | a V buffer brings a client through initialize, the root search lands on the project and falls back to the buffer's directory when there is no marker, two projects are two clients, `on_attach` ran, and `:VisorInfo` and `stop()` report what happened |
+| `format.lua` | `:VisorFormat` and format on save put what `v fmt` wrote into the buffer, a save with the setting off leaves it alone, a per-buffer override wins, and the file on disk only changes at save |
+| `highlights.lua` | tokens arrive and land as highlight: the module keyword, a comment, a struct name, a field, a const, a number and a string are each read back out of the editor with the type the walk gave them, and a const carries the read only modifier |
+
+Nothing in them mocks the protocol.
 
 ## Known noise
 

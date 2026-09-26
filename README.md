@@ -79,10 +79,16 @@ two workspace notifications for folders and configuration.
 `textDocument/diagnostic` is the one method the server knows and cannot answer.
 It comes back as a request-failed error naming the diagnostics lane rather than
 as an empty diagnostic list, because an empty list reads as a file with no
-problems. The feature providers are not advertised in `initialize`, so hover,
-completion and the rest answer `MethodNotFound`, and wiring the engine to them
-is the work in progress. Everything under Features is the v0.1.0 target rather
-than something you can install today.
+problems.
+
+Formatting and semantic tokens are the two lanes that answer today. Both are
+advertised only where they can be served: formatting when the startup probe
+found a compiler that rewrites a buffer, tokens when the client named token
+types this server emits and asked for whole-document requests. The providers
+that have no handlers yet (hover, completion, definition and the rest) are left
+unadvertised so they answer `MethodNotFound` instead of something empty, and
+wiring the engine to them is the work in progress. Everything else under
+Features is the v0.1.0 target rather than something you can install today.
 
 ## Features, targeted for v0.1.0
 
@@ -94,9 +100,9 @@ than something you can install today.
 | Rename | rename and prepare rename | N/A |
 | Symbols | document symbols and workspace symbols | N/A |
 | Selection and view | folding ranges, document highlight, selection range, range formatting | N/A |
-| Semantic tokens | semantic tokens, inlay hints | N/A |
+| Semantic tokens | declarations, types, literals, comments, keywords and operators, read from the parse tree | in the tree |
 | Code actions | code actions, code lens, call hierarchy | N/A |
-| Formatting | `v fmt` verbatim | N/A |
+| Formatting | `v fmt` over the whole buffer, on request or on save | in the tree |
 
 An inline completion provider (LSP 3.18) and anything debugger shaped are out of
 scope for v0.1.0. `ROADMAP.md` carries the detail and the release cadence.
