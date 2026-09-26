@@ -30,6 +30,9 @@ fn handle_initialize(mut s Server, req Message) Reply {
 	}
 	negotiated := negotiate(s.client_caps, s.compiler_caps)
 	s.negotiation_notes = negotiated.notes
+	// The handlers encode with the same legend the reply advertised, so an index
+	// means the same type on both sides.
+	s.semantic_legend = negotiated.legend
 	mut result := map[string]json2.Any{}
 	result['capabilities'] = json2.Any(negotiated.capabilities)
 	mut info := map[string]json2.Any{}

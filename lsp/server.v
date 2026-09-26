@@ -87,6 +87,9 @@ mut:
 	compiler       ?vtool.Compiler
 	compiler_caps  ?vtool.CapabilityReport
 	compiler_error string
+	// semantic_legend is the token legend the client agreed to in initialize.
+	// A request that arrives with an empty legend has nowhere to put a token.
+	semantic_legend SemanticLegend
 	// pending maps the ids of requests the server sent to the client onto what
 	// the reply means.
 	pending          map[string]PendingRequest

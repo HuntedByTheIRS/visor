@@ -19,6 +19,11 @@ fn (mut s Server) register_core() {
 	// the same thing, so a client is never told to ask for something that would
 	// come back as an error.
 	s.on('textDocument/formatting', handle_formatting)
+	// Semantic tokens are the other lane that answers today. They come from the
+	// buffer's parse tree, so a file that does not compile is highlighted like
+	// any other, and the capability set only advertises them when the client
+	// named token types this server can emit.
+	s.on('textDocument/semanticTokens/full', handle_semantic_tokens_full)
 	// The diag lane implements this. Until it lands the method answers with a
 	// request-failed error naming the lane, because an empty diagnostic list
 	// would read as a file with no problems.
