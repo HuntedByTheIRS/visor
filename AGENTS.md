@@ -8,6 +8,7 @@ wrong called out.
 
 ```sh
 v -o /tmp/visor .        # build
+v run tools/check_warnings.vsh   # warning gate, silent on a clean tree
 v fmt -verify .          # format gate, exit 0 or fail
 v test .                 # every module's tests, recurses into module dirs
 v test vtool/            # one module
@@ -47,6 +48,12 @@ CI greps for the first two. Review catches the rest, so do not rely on CI.
 A build that compiles is not a finished change. Run the command that covers what
 you touched, and report what you ran and what came back. If something is
 unverified, say so rather than leaving it implied.
+
+`v run tools/check_warnings.vsh` is the warning gate, and it is the tool to run
+on every change. It compiles every module, vets the whole tree, checks the test
+files individually and builds the binary, and fails on any line any of those
+prints. Do not land a change that leaves it red. The gate plants a type error
+and an undocumented function on every run, so a silent run is evidence.
 
 ## Commit shape
 
