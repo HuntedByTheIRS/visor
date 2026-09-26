@@ -102,13 +102,18 @@ check('the server advertised a token provider',
   client.server_capabilities.semanticTokensProvider ~= nil,
   vim.inspect(client.server_capabilities.semanticTokensProvider))
 
--- The lane is opt-out, not opt-in: a client that can show tokens gets them
--- without asking, so this is what a plain :edit gets.
-check('the client is highlighting the buffer',
-  vim.lsp.semantic_tokens.get_at_pos(bufnr, 0, 0) ~= nil
-  or vim.lsp.semantic_tokens.is_enabled({ bufnr = bufnr }),
-  'tokens were not enabled for the buffer')
+-- The lane is opt-out, not opt-in: Neovim starts it for any client that
+-- advertises the provider, so this is what a plain :edit gets without the plugin
+-- asking. The wait is for a token to turn up without this test asking for one —
+-- get_at_pos answers with an empty table before the first reply lands, so an
+-- answer is not evidence, and is_enabled is a 0.12 spelling the 0.11 floor here
+-- does not have.
+wait_for('the client highlights the buffer without being asked', function()
+  return token_at(bufnr, 0, 0) ~= nil
+end)
 
+-- The reads below want a full result rather than whatever had arrived when the
+-- wait above finished.
 vim.lsp.semantic_tokens.force_refresh(bufnr)
 wait_for('tokens arrive from the server', function()
   return token_at(bufnr, 0, 0) ~= nil
