@@ -6,10 +6,12 @@
 # from the repository, and paths are relative to the file they appear in, so
 # anything under a module directory carries that directory's name.
 #
-# Linguist guesses C++ or Objective-C for a header that reads like either one,
-# and it guessed C++ for the tree-sitter array header from a comment inside it
-# that mentions std::. Every header here is C: the vendored runtime, the ICU
-# tables it calls, and the grammar's own headers.
+# Linguist reads a header for C++ and Objective-C markers before it settles on
+# C, and the two tree-sitter array headers carry one: the comment citing Rust's
+# `std::slice::binary_search_by` matches its `std::\w+` pattern. Both files are
+# C, and so is every other header in the tree, so the extension is pinned. The
+# `extern "C"` guards the rest of the vendored headers carry are not part of
+# that pattern.
 *.h linguist-language=C
 
 # tree_sitter_v/src is tree-sitter output: the parser, the node types it
