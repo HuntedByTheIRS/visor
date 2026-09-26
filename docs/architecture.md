@@ -28,6 +28,10 @@ Modules import downward only. `vtool/` and `engine/` know nothing about the
 protocol, `features/` reads the engine and answers questions, and `lsp/` owns the
 wire. Nothing imports `main`.
 
+`lsp/`, `vtool/`, `engine/` and `main.v` exist today. `features/`, `diag/` and
+the editor clients are the shape being built toward, and the state column below
+says which modules have landed.
+
 | Module | State | Owns | Imports from this tree |
 | --- | --- | --- | --- |
 | `vtool/` | in the tree | V binary discovery, the version and capability probe, `-check` over stdin, `fmt -` | nothing |
