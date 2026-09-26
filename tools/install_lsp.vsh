@@ -138,6 +138,13 @@ fn main() {
 			exit(1)
 		}
 	}
+	// A --root run writes the profile under the root it was given, which is not
+	// where an editor looks when XDG_CONFIG_HOME is set. Someone testing that
+	// profile wants the variable, not a silence.
+	configured := os.getenv('XDG_CONFIG_HOME')
+	if configured != '' && request.root != os.home_dir() {
+		plan.notes << 'XDG_CONFIG_HOME is set: start the profile with XDG_CONFIG_HOME=${short_path(os.join_path(request.root, '.config'))} to match where this run put the config'
+	}
 	println('install_lsp: ${request.editors.join(', ')} under ${short_path(request.root)}')
 	for editor in request.editors {
 		plan.notes << '${editor} profile: ${names[editor]}'

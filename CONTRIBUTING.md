@@ -74,6 +74,10 @@ throwaway profile is made and how this runs in CI without touching a runner's
 home. `--name` renames the profile: it is the `NVIM_APPNAME` for Neovim and the
 `vimrc` for Vim, and it is the command that gets installed.
 
+A `--root` run is self-contained, so it writes the profile under the root even
+when `XDG_CONFIG_HOME` is set and the editor would read elsewhere. The run says
+so, and names the variable to start the profile with.
+
 The Vim profile carries its own copy of vim-lsp, cloned at install time, because
 Vim ships no language client. `--vim-lsp` points at a checkout instead of
 cloning one.

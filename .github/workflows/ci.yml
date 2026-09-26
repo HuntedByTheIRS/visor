@@ -146,12 +146,34 @@ jobs:
           # The installed command starts Neovim under the profile, and the
           # client attaches: that is the whole point of an install. Headless
           # Neovim writes its messages to stderr, so that is where the line is.
+          #
+          # --root writes the profile under the root it was given, and Neovim
+          # reads $XDG_CONFIG_HOME when the image sets it, so the variable is
+          # pointed at the root here. The first check says where Neovim actually
+          # looked, because a profile nothing reads is the failure to catch.
+          export XDG_CONFIG_HOME="$root/.config"
+          env | grep -i '^XDG_' || true
+
+          # A --root run and a set XDG_CONFIG_HOME disagree about where the
+          # editor looks. The tool says so rather than leaving it to be found
+          # later, and this is where that sentence is checked.
+          XDG_CONFIG_HOME=/tmp/not-where-the-profile-is \
+            v run tools/install_lsp.vsh nvim --root "$root" --bin /tmp/visor -n |
+            grep -q 'XDG_CONFIG_HOME is set'
+
           HOME="$root" PATH="$root/.local/bin:/tmp/nvim-v0.12.5/bin:$PATH" \
+            visorvim --headless -c \
+            'lua print("config: " .. vim.fn.stdpath("config"))' -c 'qa!' 2>&1 | tee /tmp/profile.log
+          grep -qx "config: $root/.config/visorvim" /tmp/profile.log
+
+          out=$(HOME="$root" PATH="$root/.local/bin:/tmp/nvim-v0.12.5/bin:$PATH" \
             visorvim --headless \
             -c "edit $root/main.v" \
             -c 'lua vim.wait(30000, function() return #vim.lsp.get_clients() > 0 end)' \
             -c 'lua print("visor clients: " .. #vim.lsp.get_clients())' \
-            -c 'qa!' 2>&1 | grep -q 'visor clients: 1'
+            -c 'qa!' 2>&1) || true
+          printf '%s\n' "$out"
+          printf '%s\n' "$out" | grep -q 'visor clients: 1'
 
       - name: Ban compiler internals and the V1 compatibility protocol
         run: |
