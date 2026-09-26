@@ -4,7 +4,8 @@ module main
 // files that talk to it, and a command that starts that editor with them.
 //
 //   v run tools/install_lsp.vsh nvim
-//   v run tools/install_lsp.vsh nvim vim --name visorvim
+//   v run tools/install_lsp.vsh nvim vim
+//   v run tools/install_lsp.vsh vim --name vimvisor
 //   v run tools/install_lsp.vsh all -n          # print the plan, write nothing
 //
 // An install lands under a name. For Neovim the name is an NVIM_APPNAME, so the
@@ -12,6 +13,10 @@ module main
 // its own; the command that starts it is that name on PATH. Nothing here reads
 // or writes `~/.config/nvim` or `~/.vimrc`: an editor someone has already set up
 // is not this tool's to change.
+//
+// The default name suits either editor, so a run that installs both leaves the
+// second one under `<name>-vim` rather than giving two profiles one command. A
+// name that was typed is used as typed, and both editors under it stop the run.
 //
 // The server is built from the checkout this script lives in, with the compiler
 // that ran the script, into --bin. `--rebuild` builds a fresh one.
@@ -46,7 +51,8 @@ const compiler = @VEXE
 
 const flags_help = 'editors: nvim, vim (all for both; code and codium are not implemented yet)
 flags:
-  --name <name>        profile name, also the command it installs (default: visorvim)
+  --name <name>        profile name, also the command it installs (default: visorvim;
+                       vim gets <name>-vim when both editors are installed at once)
   --bin <path>         where the server binary goes (default: <root>/.local/bin/visor)
   --from <dir>         checkout to install from (default: the one this script is in)
   --root <dir>         install under this directory instead of $HOME
@@ -64,6 +70,7 @@ struct Request {
 mut:
 	editors        []string
 	name           string
+	name_given     bool
 	from           string
 	root           string
 	config         string
@@ -112,7 +119,7 @@ mut:
 }
 
 fn main() {
-	request := parse_arguments(os.args[1..]) or {
+	mut request := parse_arguments(os.args[1..]) or {
 		eprintln('install_lsp: ${err.msg()}')
 		eprintln(usage)
 		exit(1)
@@ -122,13 +129,19 @@ fn main() {
 		eprintln('install_lsp: ${err.msg()}')
 		exit(1)
 	}
+	names := profile_names(request)
 	for editor in request.editors {
+		request.name = names[editor]
+		request.config = os.join_path(config_home(request.root), request.name)
 		plan.editor(editor, request) or {
 			eprintln('install_lsp: ${err.msg()}')
 			exit(1)
 		}
 	}
-	println('install_lsp: ${request.editors.join(', ')} as ${request.name}, under ${short_path(request.root)}')
+	println('install_lsp: ${request.editors.join(', ')} under ${short_path(request.root)}')
+	for editor in request.editors {
+		plan.notes << '${editor} profile: ${names[editor]}'
+	}
 	plan.report(request)
 	if request.dry {
 		println('nothing written')
@@ -143,9 +156,30 @@ fn main() {
 		println('server: ${version.output.trim_space()}')
 	}
 	if !path_is_on_env(request.bin_dir, 'PATH') {
-		println('note: ${short_path(request.bin_dir)} is not on your PATH, so `${request.name}` needs the full path')
+		println('note: ${short_path(request.bin_dir)} is not on your PATH, so the profiles need the full path')
 	}
-	println('start it with: ${request.name} path/to/main.v')
+	for editor in request.editors {
+		println('start ${editor} with: ${names[editor]} path/to/main.v')
+	}
+}
+
+// profile_names is the name each editor's profile lands under, and the command
+// that starts it. The default suits either editor, so asking for both in one run
+// would leave two installs fighting over one command; the second one takes a
+// suffix instead of the run refusing. A name the caller typed is used as typed,
+// and two editors left under it stop the run.
+fn profile_names(request &Request) map[string]string {
+	mut names := map[string]string{}
+	for editor in request.editors {
+		names[editor] = request.name
+	}
+	if request.name_given || request.editors.len == 1 {
+		return names
+	}
+	if 'vim' in request.editors {
+		names['vim'] = request.name + '-vim'
+	}
+	return names
 }
 
 // parse_arguments reads the command line. Flags take a value either as
@@ -192,7 +226,10 @@ fn parse_arguments(args []string) !Request {
 			'--force' { request.force = true }
 			'--rebuild' { request.rebuild = true }
 			'--no-format-on-save' { request.format_on_save = false }
-			'--name' { request.name = value }
+			'--name' {
+				request.name = value
+				request.name_given = true
+			}
 			'--bin' { bin = value }
 			'--from' { from = value }
 			'--root' { root = value }
@@ -209,7 +246,6 @@ fn parse_arguments(args []string) !Request {
 	request.name = checked_name(request.name) or { return error(err.msg()) }
 	request.root = os.real_path(expand_root(root))
 	request.from = os.real_path(from)
-	request.config = os.join_path(config_home(request.root), request.name)
 	request.bin_dir = os.join_path(request.root, '.local', 'bin')
 	request.bin = if bin != '' {
 		os.real_path(expand_root(bin))
