@@ -41,8 +41,8 @@ pub interface PsiElement {
 	// parent returns the parent node.
 	// If the node is the root, none is returned.
 	parent() ?PsiElement
-	// parent_nth returns the parent node at the specified nesting level.
-	// `parent_nth(0)` is equivalent to `parent()`.
+	// parent_nth returns the ancestor depth levels up: 0 is the element itself,
+	// 1 its parent, 2 its grandparent.
 	// If no such node exists, none is returned.
 	parent_nth(depth int) ?PsiElement
 	// parent_of_type returns the parent node with the specified type.

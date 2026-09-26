@@ -160,5 +160,5 @@ pub fn (e StructDeclaration) is_heap() bool {
 	return false
 }
 
-// stub does nothing; struct declarations are not backed by a dedicated stub type.
+// stub is the marker method that makes StructDeclaration a StubBasedPsiElement.
 pub fn (_ StructDeclaration) stub() {}

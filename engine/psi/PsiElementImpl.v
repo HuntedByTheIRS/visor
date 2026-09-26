@@ -188,8 +188,8 @@ pub fn (n &PsiElementImpl) parent() ?PsiElement {
 	return create_element(parent, n.containing_file)
 }
 
-// parent_nth walks depth levels up the tree, returning none before it gets
-// that far.
+// parent_nth walks depth levels up the tree: 0 is the element itself, 1 its
+// parent. It returns none before it gets that far.
 pub fn (n &PsiElementImpl) parent_nth(depth int) ?PsiElement {
 	if !n.is_valid_tree() {
 		return none
