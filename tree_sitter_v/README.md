@@ -22,7 +22,6 @@ Kept for the build:
 
 Kept for readers:
 
-* `queries/` - the editor queries for V
 * `test/corpus/` - the grammar's parse fixtures
 
 Dropped, because visor is a C and V tree: the Rust, JavaScript and lldb
