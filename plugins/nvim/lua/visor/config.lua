@@ -27,7 +27,9 @@ M.defaults = {
   format_timeout_ms = 10000,
 
   -- semantic_tokens asks for highlighting tokens on attach, when the server
-  -- said in initialize that it has them.
+  -- said in initialize that it has them. Neovim starts the lane for such a
+  -- client anyway (see the README), so this is the plugin saying so itself:
+  -- false stops that, it does not turn the highlighting off.
   semantic_tokens = true,
 
   -- root_markers decide the project root for a buffer, nearest one first. A

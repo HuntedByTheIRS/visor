@@ -56,7 +56,12 @@ letting a save pass for formatted. Nothing the plugin does during a save can
 cancel the write either: a formatting failure costs a message, not the file.
 
 `semantic_tokens` is on because the server only advertises the provider when it
-can serve it. Highlighting covers what the parse tree can name on its own:
+can serve it. It does not decide whether highlighting happens: Neovim starts the
+lane itself for any client that advertises the provider (0.11 calls
+`semantic_tokens.start` from its own client attach, 0.12 has the capability on
+by default), so turning the option off stops this plugin asking and nothing
+more. What a server advertises is the switch. Highlighting covers what the parse
+tree can name on its own:
 declarations, the types they mention, literals, comments, attributes, keywords
 and operators. A call to a function is not among them, because telling a call
 from a field of the same name needs the index rather than the tree, so the
