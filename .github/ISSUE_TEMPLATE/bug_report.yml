@@ -18,7 +18,7 @@ body:
     attributes:
       label: visor version
       description: The output of `visor --version`.
-      placeholder: visor 0.0.4
+      placeholder: visor 0.0.5
     validations:
       required: true
   - type: input
