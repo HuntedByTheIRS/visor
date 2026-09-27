@@ -84,6 +84,9 @@ mut:
 	id     int
 	method string
 	result json2.Any
+	// params is the payload of a message the client sent or the server sent as
+	// a notification, which carries its payload there rather than in a result.
+	params json2.Any
 	// ecode is 0 on a message without an error.
 	ecode int
 	etext string
@@ -110,6 +113,9 @@ fn decode_message(body string) Message {
 	}
 	if value := root['result'] {
 		m.result = value
+	}
+	if value := root['params'] {
+		m.params = value
 	}
 	if value := root['error'] {
 		m.err = true
@@ -344,6 +350,67 @@ fn open_notification(uri string, text string) string {
 	return json2.encode(json2.Any(message))
 }
 
+// change_notification replaces a whole buffer, which is how an editor sends an
+// edit that has not been saved. Building it here rather than as a literal keeps
+// the newlines of the text out of the hand written JSON.
+fn change_notification(uri string, version int, text string) string {
+	mut document := map[string]json2.Any{}
+	document['uri'] = json2.Any(uri)
+	document['version'] = json2.Any(version)
+	mut change := map[string]json2.Any{}
+	change['text'] = json2.Any(text)
+	mut params := map[string]json2.Any{}
+	params['textDocument'] = json2.Any(document)
+	params['contentChanges'] = json2.Any([json2.Any(change)])
+	mut message := map[string]json2.Any{}
+	message['jsonrpc'] = json2.Any('2.0')
+	message['method'] = json2.Any('textDocument/didChange')
+	message['params'] = json2.Any(params)
+	return json2.encode(json2.Any(message))
+}
+
+// pull_request asks for a buffer's findings, echoing the report id the client
+// already holds when there is one.
+fn pull_request(id int, uri string, previous string) string {
+	mut document := map[string]json2.Any{}
+	document['uri'] = json2.Any(uri)
+	mut params := map[string]json2.Any{}
+	params['textDocument'] = json2.Any(document)
+	if previous != '' {
+		params['previousResultId'] = json2.Any(previous)
+	}
+	mut message := map[string]json2.Any{}
+	message['jsonrpc'] = json2.Any('2.0')
+	message['id'] = json2.Any(id)
+	message['method'] = json2.Any('textDocument/diagnostic')
+	message['params'] = json2.Any(params)
+	return json2.encode(json2.Any(message))
+}
+
+// report_field reads one field out of a diagnostic report.
+fn report_field(reply Message, key string) json2.Any {
+	result := as_map(reply.result) or { return json2.Any('') }
+	return result[key] or { json2.Any('') }
+}
+
+// report_items is the finding list of a full report, empty when it holds none.
+fn report_items(reply Message) []json2.Any {
+	return as_list(report_field(reply, 'items')) or { no_list() }
+}
+
+// finding_position reads line and character out of one finding.
+fn finding_position(item json2.Any) (int, int) {
+	obj := as_map(item) or { return -1, -1 }
+	range_ := as_map(obj['range'] or { json2.Any(no_map()) }) or { return -1, -1 }
+	start := as_map(range_['start'] or { json2.Any(no_map()) }) or { return -1, -1 }
+	return (start['line'] or { json2.Any(-1) }).int(), (start['character'] or { json2.Any(-1) }).int()
+}
+
+fn finding_message(item json2.Any) string {
+	obj := as_map(item) or { return '' }
+	return (obj['message'] or { json2.Any('') }).str()
+}
+
 fn main() {
 	bin := arg_value('--bin') or {
 		eprintln(usage)
@@ -463,6 +530,42 @@ fn main() {
 			'length ${first_length}, type ${first_type}, keyword sits at ${keyword_index}')
 	}
 
+	// Diagnostics are computed from the client's text, so this pair of requests
+	// proves over a real pipe that a check runs against the buffer and that the
+	// finding is placed in it. The file on disk still holds the clean fixture,
+	// so nothing here can have come from it.
+	broken := 'fn main() {\n	x := \n}\n'
+	runner.send(change_notification(root_uri, 2, broken))
+	runner.send(pull_request(7, root_uri, ''))
+	if reply := runner.expect_reply('a pull is answered from the unsaved buffer', 7,
+		wait_for_reply_ms) {
+		runner.record('the pull is not an error', !reply.err, reply.etext)
+		kind := report_field(reply, 'kind').str()
+		report_id := report_field(reply, 'resultId').str()
+		items := report_items(reply)
+		runner.record('a full report comes back with an id', kind == 'full' && report_id != '',
+			'kind ${kind}, resultId ${report_id}')
+		runner.record('the broken buffer earns one finding', items.len == 1, '${items.len} findings')
+		if items.len == 1 {
+			line, character := finding_position(items[0])
+			// `x := ` is on the buffer's second line, and the finding lands
+			// there rather than on a line of whatever the compiler read.
+			runner.record('the finding sits in the buffer at 2:0', line == 2 && character == 0,
+				'${line}:${character}')
+			runner.record('the finding carries the compiler message',
+				finding_message(items[0]).contains('unexpected token'), finding_message(items[0]))
+			// The id round trip is what stops a client from asking for the same
+			// list again on every keystroke.
+			runner.send(pull_request(8, root_uri, report_id))
+			if again := runner.expect_reply('a pull that echoes the id is answered', 8,
+				wait_for_reply_ms) {
+				runner.record('the echoed id is answered with unchanged',
+					report_field(again, 'kind').str() == 'unchanged',
+					'kind ${report_field(again, 'kind').str()}')
+			}
+		}
+	}
+
 	runner.send('{"jsonrpc":"2.0","id":6,"method":"shutdown"}')
 	if reply := runner.expect_reply('shutdown answers', 6, wait_for_reply_ms) {
 		runner.record('shutdown result is null', reply.result is json2.Null, 'result: ${reply.result}')
@@ -491,6 +594,58 @@ fn main() {
 	other_proc.wait()
 	runner.record('exit without shutdown ends the process with code 1', other_proc.code == 1,
 		'exit code ${other_proc.code}')
+
+	// A third process, for the pushed half. This client says it will show what
+	// the server pushes, opens a buffer that does not compile, and then says
+	// nothing at all. The report has to arrive on its own, which is what proves
+	// the serving loop comes back for a scheduled check while the client is
+	// quiet: the check is debounced, so a loop that only woke for the client
+	// would hold the finding until the next keystroke.
+	mut push_proc := os.new_process(bin)
+	push_proc.set_redirect_stdio()
+	push_proc.run()
+	mut pusher := Runner{
+		framer: Framer{
+			fd: push_proc.stdio_fd[1]
+		}
+		out_fd: push_proc.stdio_fd[0]
+	}
+	push_uri := 'file://${os.getwd()}/testdata/smoke/unsaved.v'
+	pusher.send('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":' +
+		'{"textDocument":{"diagnostic":{},"publishDiagnostics":{}}}}}')
+	pusher.next(wait_for_reply_ms) or { eprintln('smoke: the push server did not answer') }
+	pusher.send('{"jsonrpc":"2.0","method":"initialized","params":{}}')
+	pusher.send(open_notification(push_uri, broken))
+	if pushed := pusher.next(wait_for_reply_ms) {
+		pusher.record('the pushed report is a publishDiagnostics notification',
+			pushed.method == 'textDocument/publishDiagnostics' && pushed.kind == .notification,
+			pushed.method)
+		params := as_map(pushed.params) or { no_map() }
+		uri := (params['uri'] or { json2.Any('') }).str()
+		version := (params['version'] or { json2.Any(0) }).int()
+		items := as_list(params['diagnostics'] or { json2.Any(no_list()) }) or { no_list() }
+		pusher.record('the push names the buffer it is about', uri == push_uri && version == 1,
+			'${uri} at version ${version}')
+		pusher.record('the pushed report carries the finding', items.len == 1,
+			'${items.len} findings')
+		if items.len == 1 {
+			line, character := finding_position(items[0])
+			pusher.record('the pushed finding sits at 2:0', line == 2 && character == 0,
+				'${line}:${character}')
+		}
+	} else {
+		pusher.record('a pushed report arrives with the client quiet', false,
+			'nothing arrived within ${wait_for_reply_ms} ms')
+	}
+	pusher.send('{"jsonrpc":"2.0","id":2,"method":"shutdown"}')
+	pusher.next(wait_for_reply_ms) or { eprintln('smoke: the push server did not answer shutdown') }
+	pusher.send('{"jsonrpc":"2.0","method":"exit"}')
+	push_proc.wait()
+	runner.record('the push session exits cleanly', push_proc.code == 0, 'exit code ${push_proc.code}')
+	// The push process ran its own checks through its own runner, and a failure
+	// there has to reach the exit code the same way the rest of them do.
+	runner.checks += pusher.checks
+	runner.failures += pusher.failures
 
 	println('${runner.checks} checks, ${runner.failures} failed')
 	if runner.failures > 0 {
