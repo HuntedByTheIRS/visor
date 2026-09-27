@@ -526,7 +526,7 @@ fn vim_config(request &Request, client string) string {
 	config += '  autocmd User lsp_buffer_enabled setlocal omnifunc=lsp#complete\n'
 	config += "  autocmd User lsp_buffer_enabled echomsg 'visor attached (' . expand('%:p') . ')'\n"
 	if request.format_on_save {
-		config += "  autocmd BufWritePre *.v call execute('LspDocumentFormatSync')\n"
+		config += "  autocmd BufWritePre *.v,*.vv,*.vsh call execute('LspDocumentFormatSync')\n"
 	} else {
 		config += '" Formatting on save is off for this profile: :LspDocumentFormat runs it when\n'
 		config += '" you want it.\n'
