@@ -59,11 +59,15 @@ echo "visor test: $("$nvim" --version | head -1), server $bin"
 status=0
 # -u NONE keeps each run away from the developer's own config. With it, nothing
 # sources plugin/*.lua, so a script loads the plugin file itself and the test
-# sees exactly the files under plugins/nvim.
+# sees exactly the files under plugins/nvim. It also turns filetype detection
+# off, which a script cannot cover up for: a buffer whose filetype nothing
+# detected is not a buffer an editor ever opens. So detection is turned back on
+# here, before the script runs.
 for script in $scripts; do
 	echo "--- $(basename "$script")"
 	if ! VISOR_BIN="$bin" "$nvim" --headless -u NONE \
 		--cmd "set runtimepath^=$plugin" \
+		--cmd "filetype on" \
 		-l "$script"; then
 		status=1
 	fi

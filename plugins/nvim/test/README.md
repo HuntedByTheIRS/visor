@@ -13,6 +13,13 @@ from `--nvim`, then `$NVIM_BIN`, then `PATH`, so a run can name the version it
 is testing rather than inherit whichever one is first. Each script runs in its
 own editor, so one script's clients cannot be another's.
 
+Each script is started with `-u NONE`, which keeps the developer's own config
+out of the run and also turns filetype detection off. The runner turns detection
+back on before the script starts, because a buffer whose filetype nothing
+detected is not a buffer an editor ever opens: a script that sets the filetype
+itself tests the plugin's hook and skips the part that decides whether the hook
+runs at all.
+
 `tools/editor_test.vsh` is the entry point when a verdict is wanted rather than
 a stream: it checks each editor against the 0.11 floor, runs this script under
 every editor it is given, and adds the per-script totals into one line.

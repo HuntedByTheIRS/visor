@@ -58,7 +58,16 @@ local function write_project()
   return dir
 end
 
-check('nvim detects .v as the V filetype on its own', vim.filetype.match({ filename = 'app.v' }) == 'v')
+-- The extensions visor serves, as the editor's own table answers for them with
+-- no buffer behind them. What a real `.v` buffer gets instead is decided by a
+-- content heuristic, which is covered below on files opened from disk.
+check('nvim maps .v, .vv and .vsh to the V filetype',
+  vim.filetype.match({ filename = 'app.v' }) == 'v'
+    and vim.filetype.match({ filename = 'script.vv' }) == 'v'
+    and vim.filetype.match({ filename = 'script.vsh' }) == 'v',
+  string.format('.v=%s .vv=%s .vsh=%s', tostring(vim.filetype.match({ filename = 'app.v' })),
+    tostring(vim.filetype.match({ filename = 'script.vv' })),
+    tostring(vim.filetype.match({ filename = 'script.vsh' }))))
 
 -- load the plugin the way an editor does
 vim.cmd('runtime! plugin/visor.lua')
@@ -79,7 +88,9 @@ check('the found server is the one run.sh named', visor.find_server() == bin,
 local project = write_project()
 vim.cmd.edit(project .. '/app.v')
 local bufnr = vim.api.nvim_get_current_buf()
-vim.bo[bufnr].filetype = 'v' -- the FileType event is what starts the server
+-- The file is opened as a file, so the filetype is whatever detection decided.
+-- Setting it here instead would test the plugin's hook and not the editor.
+check('detection called app.v V', vim.bo[bufnr].filetype == 'v', vim.bo[bufnr].filetype)
 
 wait_for('the filetype event brought a client all the way through initialize', function()
   local client = visor.client(bufnr)
@@ -117,7 +128,7 @@ vim.fn.mkdir(loose, 'p')
 vim.fn.writefile({ 'module main' }, loose .. '/loose.v')
 vim.cmd.edit(loose .. '/loose.v')
 local loose_buf = vim.api.nvim_get_current_buf()
-vim.bo[loose_buf].filetype = 'v'
+check('detection called loose.v V', vim.bo[loose_buf].filetype == 'v', vim.bo[loose_buf].filetype)
 wait_for('a second project gets its own client', function()
   local second = visor.client(loose_buf)
   return second ~= nil and second.initialized == true
@@ -128,6 +139,44 @@ check('a buffer with no marker gets its own directory as the root',
   loose_client and tostring(loose_client.config.root_dir) or 'no client')
 check('the first client still serves the first project', visor.client(bufnr) ~= nil)
 check('two projects are two clients', #visor.clients() == 2,
+  string.format('%d client(s)', #visor.clients()))
+
+-- The three extensions visor serves, opened as files so detection is what
+-- decides. A script that sets filetype itself tests the plugin's hook and not
+-- the editor, and the difference is exactly what made a real session fail:
+-- Neovim reads a `.v` buffer's first 500 lines and answers coq for a line that
+-- ends in a period, which V source does all the time.
+local function opens_as_v(name, lines, label)
+  local path = project .. '/' .. name
+  vim.fn.writefile(lines, path)
+  vim.cmd.edit(path)
+  local buf = vim.api.nvim_get_current_buf()
+  local ft = vim.bo[buf].filetype
+  check(label .. ' is detected as V', ft == 'v', ft)
+  wait_for(label .. ' starts a client from the filetype event', function()
+    local c = visor.client(buf)
+    return c ~= nil and c.initialized == true
+  end)
+  return buf
+end
+
+-- A multi-line string whose first line ends in a period: the shape visor's own
+-- entry point has, and the shape the heuristic calls Coq.
+local entry_point = {
+  "const usage = 'a language server for V.",
+  "one more line of it'",
+  '',
+  'fn main() {}',
+}
+local entry_buf = opens_as_v('entry.v', entry_point, 'a .v file whose content reads as Coq')
+local entry_client = visor.client(entry_buf)
+check('the Coq-looking buffer landed on the project client',
+  entry_client ~= nil and entry_client.id == client.id,
+  entry_client and tostring(entry_client.id) or 'no client')
+
+opens_as_v('script.vv', { 'println(1)' }, 'a .vv file')
+opens_as_v('script.vsh', { '#!/usr/bin/env -S v run', '', 'println(1)' }, 'a .vsh file')
+check('the served extensions reused the project client', #visor.clients() == 2,
   string.format('%d client(s)', #visor.clients()))
 
 local info = table.concat(visor.info(), '\n')
