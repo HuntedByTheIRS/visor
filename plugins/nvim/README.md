@@ -107,9 +107,11 @@ plugins/nvim/test/run.sh --bin /tmp/visor
 
 Nothing in them mocks the protocol.
 
-## Known noise
+## Diagnostics
 
-Neovim asks for pull diagnostics when a V buffer opens. The server answers that
-request with an error naming the diagnostics lane, because an empty list would
-read as a file with no problems, so the editor shows that message. It goes away
-when the diagnostics lane lands.
+Neovim asks for pull diagnostics when a V buffer opens, and it advertises that
+it will show what the server pushes. The server does both from one report: the
+pull answers about the buffer the client is holding, and a check the edits earn
+is pushed as `textDocument/publishDiagnostics` once the typing stops. A buffer
+that has never been saved is diagnosed like any other, because the text travels
+to the compiler on stdin.

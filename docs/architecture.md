@@ -37,8 +37,8 @@ being built toward, and the state column below says which modules have landed.
 | `vtool/` | in the tree | V binary discovery, the version and capability probe, `-check` over stdin, `fmt -` | nothing |
 | `engine/` | in the tree | tree-sitter V to PSI to index, ported from v-analyzer | its own submodules and the vendored bindings |
 | `features/` | in the tree | the typed answers the handlers send: the whole-buffer `v fmt` edit, and the token walk over the parse tree | `engine/`, `vtool/` |
-| `lsp/` | in the tree | the wire: framing, capabilities, routing, sync, cancellation, progress, shutdown | `features/` for the answers, plus `io`, `json2` and `os` |
-| `diag/` | planned | debounce, one check in flight per module root, cancellation | `vtool/` |
+| `lsp/` | in the tree | the wire: framing, capabilities, routing, sync, cancellation, progress, shutdown, and the diagnostics lane | `features/` for the answers, `diag/` for the checks, plus `io`, `json2`, `os` and `vtool` |
+| `diag/` | in the tree | debounce per document, one check in flight per module root, the last report per buffer | `vtool/` |
 | `main.v` | in the tree | the entry point and the stdio loop | `lsp/` |
 | `plugins/nvim/` | in the tree | the Neovim client: server search and attach | nothing, it speaks the protocol |
 
@@ -99,3 +99,18 @@ so `diag/` debounces per document, allows one check in flight per module root,
 caps concurrent subprocesses, and cancels a check whose buffer has moved on. The
 test for this asserts the process count after a hundred edit cycles, not just
 that the diagnostics looked right.
+
+`lsp/diagnostics.v` is where a report meets the wire, and both halves of the
+lane come from one report. A finished check is kept per buffer version: a pull
+about text already checked is answered from it, a pull that echoes the
+`resultId` it holds comes back `unchanged`, and only an edit earns another
+compiler run. The serving loop wakes for a scheduled check, not only for the
+client, which is what lets a pushed report arrive while the editor is quiet:
+`poll` on the client's descriptor for as long as the earliest check may wait,
+then the checks run and the loop looks at the client again.
+
+Positions are recomputed rather than adjusted. The compiler counts lines from
+one and its column is a byte offset into the line, while the protocol counts
+lines from zero and characters in UTF-16 code units, so a line holding an
+astral character would otherwise be placed short by one unit per character
+before the finding.

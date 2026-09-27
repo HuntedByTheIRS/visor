@@ -76,25 +76,28 @@ to `main`, and the protocol core serves the session over stdio: `initialize`,
 `initialized`, `shutdown`, `exit`, the four document sync notifications, and the
 two workspace notifications for folders and configuration.
 
-`textDocument/diagnostic` is the one method the server knows and cannot answer.
-It comes back as a request-failed error naming the diagnostics lane rather than
-as an empty diagnostic list, because an empty list reads as a file with no
-problems.
+`textDocument/diagnostic` is answered from the buffer the client holds, so a
+file nobody has saved is checked like any other: the text travels to the
+compiler on stdin. A client that shows what the server pushes gets the same
+findings as `textDocument/publishDiagnostics` once the typing stops, and a
+`didClose` takes them away again.
 
-Formatting and semantic tokens are the two lanes that answer today. Both are
-advertised only where they can be served: formatting when the startup probe
-found a compiler that rewrites a buffer, tokens when the client named token
-types this server emits and asked for whole-document requests. The providers
-that have no handlers yet (hover, completion, definition and the rest) are left
-unadvertised so they answer `MethodNotFound` instead of something empty, and
-wiring the engine to them is the work in progress. Everything else under
-Features is the v0.1.0 target rather than something you can install today.
+Formatting, semantic tokens and diagnostics are the three lanes that answer
+today, and each one is advertised only where it can be served: formatting when
+the startup probe found a compiler that rewrites a buffer, tokens when the
+client named token types this server emits, and diagnostics when the client
+offered the pull and the probe found a compiler that reports a finding for a
+buffer it cannot compile. The providers that have no handlers yet (hover,
+completion, definition and the rest) are left unadvertised so they answer
+`MethodNotFound` instead of something empty, and wiring the engine to them is
+the work in progress. Everything else under Features is the v0.1.0 target
+rather than something you can install today.
 
 ## Features, targeted for v0.1.0
 
 | Area | What ships | Status |
 | --- | --- | --- |
-| Diagnostics | pushed and pulled, including over unsaved buffers | N/A |
+| Diagnostics | pushed and pulled, including over unsaved buffers | in the tree |
 | Hover and completion | hover, completion, signature help | N/A |
 | Navigation | definition, declaration, type definition, implementation, references | N/A |
 | Rename | rename and prepare rename | N/A |

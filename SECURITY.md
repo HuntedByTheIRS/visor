@@ -46,8 +46,9 @@ Worth reporting:
 - a crafted buffer or file that makes visor execute something unexpected
 - a path outside the opened workspace being read or written
 - a diagnostic, hover or completion result that escapes the buffer it came from.
-  None of those handlers is wired yet, and the diagnostics one is a stub until
-  the diagnostics lane lands.
+  Diagnostics are answered from the buffer the client sent, so a finding about a
+  file the client never opened is in scope. Hover and completion have no handler
+  yet.
 
 ## What is not ours
 
