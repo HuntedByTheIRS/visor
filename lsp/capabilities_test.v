@@ -71,6 +71,35 @@ fn compiler_that_cannot_format() vtool.CapabilityReport {
 	}
 }
 
+// A probe report from a compiler that reports findings for a buffer it cannot
+// compile, which is what the diagnostics lane needs.
+fn compiler_that_checks() vtool.CapabilityReport {
+	return vtool.CapabilityReport{
+		v_version: 'V 0.5.2 test'
+		items:     {
+			'check': vtool.Capability{
+				kind:   .check
+				status: .supported
+				detail: 'reported the error written into the probe buffer'
+			}
+		}
+	}
+}
+
+// A probe report from a compiler that ran and reported nothing.
+fn compiler_that_cannot_check() vtool.CapabilityReport {
+	return vtool.CapabilityReport{
+		v_version: 'V 0.5.2 test'
+		items:     {
+			'check': vtool.Capability{
+				kind:   .check
+				status: .unsupported
+				detail: 'the invocation produced no diagnostic for a buffer that cannot compile'
+			}
+		}
+	}
+}
+
 fn object_at(obj map[string]json2.Any, key string) map[string]json2.Any {
 	value := obj[key] or { panic('${key} is missing') }
 	return as_object(value) or { panic('${key} is not an object') }
@@ -116,15 +145,16 @@ fn test_a_client_that_advertises_nothing_gets_full_sync_and_little_else() {
 }
 
 fn test_the_full_client_gets_the_providers_it_advertised() {
-	caps := caps_from(rich_client)
+	caps := caps_with(rich_client, compiler_that_checks())
 	assert 'workspace' in caps
 	folders := object_at(object_at(caps, 'workspace'), 'workspaceFolders')
 	assert is_true(folders, 'supported')
 	assert is_true(folders, 'changeNotifications')
 	provider := object_at(caps, 'diagnosticProvider')
 	assert string_at(provider, 'identifier') == server_name
-	// the diag lane cannot schedule a module root yet, so neither of these is
-	// claimed.
+	// One buffer per request: a whole workspace pass and the cross-file
+	// dependencies that come with it are another lane's work, and both are
+	// left out of the claim rather than answered with something smaller.
 	assert !is_true(provider, 'interFileDependencies')
 	assert !is_true(provider, 'workspaceDiagnostics')
 	assert is_true(caps, 'workDoneProgress')
@@ -133,12 +163,37 @@ fn test_the_full_client_gets_the_providers_it_advertised() {
 
 fn test_the_two_client_sets_do_not_produce_the_same_capabilities() {
 	thin := caps_from(thin_client)
-	rich := caps_from(rich_client)
+	rich := caps_with(rich_client, compiler_that_checks())
 	assert thin.len != rich.len
 	assert 'workspace' !in thin
 	assert 'workspace' in rich
 	assert 'diagnosticProvider' in rich
 	assert 'diagnosticProvider' !in thin
+}
+
+fn test_diagnostics_are_pulled_only_when_the_client_and_the_compiler_allow_it() {
+	// The client asked, and the compiler reports nothing, so there is no
+	// provider to advertise: the request would fail on every keystroke.
+	caps := caps_with(rich_client, compiler_that_cannot_check())
+	assert 'diagnosticProvider' !in caps
+	notes := negotiate(client_for(rich_client), compiler_that_cannot_check()).notes
+	assert notes.any(it.contains('the compiler cannot check a buffer'))
+
+	// No compiler at all is the same answer with a different reason.
+	bare := negotiate(client_for(rich_client), none)
+	assert 'diagnosticProvider' !in bare.capabilities
+	assert bare.notes.any(it.contains('no compiler was resolved at startup'))
+}
+
+fn test_pushed_diagnostics_are_a_note_of_their_own() {
+	// A client that will draw a pushed finding says so once, and one that does
+	// not is served by the pull path. Which of the two this session chose is
+	// worth a line in the negotiation record either way.
+	pushing := '{"textDocument":{"publishDiagnostics":{"relatedInformation":true}}}'
+	notes := negotiate(client_for(pushing), compiler_that_checks()).notes
+	assert notes.any(it.contains('publishDiagnostics: pushed'))
+	quiet := negotiate(client_for(rich_client), compiler_that_checks()).notes
+	assert quiet.any(it.contains('publishDiagnostics: not pushed, the client did not offer'))
 }
 
 fn test_position_encoding_is_left_alone_when_the_client_did_not_offer_it() {
@@ -200,10 +255,10 @@ fn test_configuration_offers_are_read_from_the_client_side() {
 fn test_every_decision_is_written_down() {
 	notes := negotiate(client_for(bare_client), none).notes
 	// one line per capability considered, so a support question has an answer
-	// without re-reading the negotiation. Six is what a client that offered
-	// nothing gets: sync, formatting, semantic tokens, workspace folders,
-	// diagnostics and progress.
-	assert notes.len == 6
+	// without re-reading the negotiation. Seven is what a client that offered
+	// nothing gets: sync, formatting, semantic tokens, workspace folders, the
+	// pull diagnostics provider, the pushed diagnostics and progress.
+	assert notes.len == 7
 	mut sync_note := ''
 	for note in notes {
 		if note.starts_with('textDocumentSync:') {

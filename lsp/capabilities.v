@@ -163,12 +163,24 @@ pub fn negotiate(client ClientCapabilities, compiler ?vtool.CapabilityReport) Ne
 	}
 
 	if client.advertises(cap_pull_diagnostics) {
-		// the diag lane fills this in. Until it does, the method answers with a
-		// request-failed error naming the lane, which is a visible stub.
-		caps['diagnosticProvider'] = diagnostic_provider()
-		notes << 'diagnosticProvider: registered, the client advertised ${cap_pull_diagnostics}'
+		refusal := check_refusal(compiler)
+		if refusal == '' {
+			caps['diagnosticProvider'] = diagnostic_provider()
+			notes << 'diagnosticProvider: registered, the client advertised ${cap_pull_diagnostics} and `v -check -` reported the planted error'
+		} else {
+			notes << 'diagnosticProvider: not registered, ${refusal}'
+		}
 	} else {
-		notes << 'diagnosticProvider: not advertised, the client did not offer ${cap_pull_diagnostics}'
+		notes << 'diagnosticProvider: not registered, the client did not offer ${cap_pull_diagnostics}'
+	}
+
+	// A pushed finding needs a compiler and a client that will draw it. The
+	// client says so once, in this capability, and a client that never says it
+	// is served by the pull path instead.
+	if client.advertises(cap_publish_diagnostics) {
+		notes << 'publishDiagnostics: pushed once an edit settles, the client advertised ${cap_publish_diagnostics}'
+	} else {
+		notes << 'publishDiagnostics: not pushed, the client did not offer ${cap_publish_diagnostics}; a pull still answers'
 	}
 
 	if client.flag(cap_work_done_progress) {
@@ -212,6 +224,18 @@ fn format_refusal(compiler ?vtool.CapabilityReport) string {
 	report := compiler or { return 'no compiler was resolved at startup' }
 	if !report.supports(.format) {
 		return 'the compiler cannot format: ${report.detail_of(.format)}'
+	}
+	return ''
+}
+
+// check_refusal is the same question for diagnostics: a check can be promised
+// only when the probe found a compiler that reports findings for a buffer it
+// cannot compile. A server that advertised the provider without that would
+// answer every request with an error, or worse, with an empty list.
+fn check_refusal(compiler ?vtool.CapabilityReport) string {
+	report := compiler or { return 'no compiler was resolved at startup' }
+	if !report.supports(.check) {
+		return 'the compiler cannot check a buffer: ${report.detail_of(.check)}'
 	}
 	return ''
 }
@@ -260,8 +284,9 @@ fn workspace_capabilities() json2.Any {
 fn diagnostic_provider() json2.Any {
 	mut provider := map[string]json2.Any{}
 	provider['identifier'] = json2.Any(server_name)
-	// Single file diagnostics only until the diag lane can schedule a whole
-	// module root, and no workspace diagnostics for the same reason.
+	// One buffer per request, and no workspace diagnostics. A whole workspace
+	// pass is its own lane, and claiming it here would promise an answer to
+	// `workspace/diagnostic` that this build does not have.
 	provider['interFileDependencies'] = json2.Any(false)
 	provider['workspaceDiagnostics'] = json2.Any(false)
 	return json2.Any(provider)

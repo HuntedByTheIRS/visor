@@ -30,7 +30,11 @@ fn test_initialize_answers_with_capabilities_built_from_the_client() {
 		panic('capabilities is not an object')
 	}
 	assert 'workspace' in caps
-	assert 'diagnosticProvider' in caps
+	// Both providers this build serves are probe-gated, and this session never
+	// probed a compiler, so neither is offered. The pair below is the other
+	// half of that: the same client, with the probe.
+	assert 'diagnosticProvider' !in caps
+	assert 'documentFormattingProvider' !in caps
 	assert 'textDocumentSync' in caps
 	info := as_object(result['serverInfo'] or { panic('no serverInfo') }) or {
 		panic('serverInfo is not an object')
@@ -53,13 +57,18 @@ fn test_a_client_that_offers_less_gets_a_smaller_capability_set() {
 	assert 'workspace' in full
 }
 
-fn test_initialize_advertises_formatting_only_once_a_compiler_is_probed() {
+fn test_initialize_advertises_a_provider_only_once_a_compiler_is_probed() {
 	// The negotiation reads the probe rather than the compiler's path, so a
-	// server that never probed has no formatting to offer. This is the pair: the
-	// same client and the same fixture, with and without the probe.
+	// server that never probed has no formatting and no diagnostics to offer.
+	// This is the pair: the same client and the same fixture, without the probe
+	// and with it.
 	unprobed_sink, unprobed := initialized_server(asks_for_everything)
 	_ = unprobed_sink
-	assert 'documentFormattingProvider' !in negotiate(unprobed.client_announced(), none).capabilities
+	unprobed_caps := negotiate(unprobed.client_announced(), none).capabilities
+	assert 'documentFormattingProvider' !in unprobed_caps
+	// the fixture's client offers the pull request, so the provider would be
+	// advertised if there were a compiler behind it.
+	assert 'diagnosticProvider' !in unprobed_caps
 
 	mut probed_sink := &BufferSink{}
 	mut probed := new_server(probed_sink)
@@ -71,6 +80,7 @@ fn test_initialize_advertises_formatting_only_once_a_compiler_is_probed() {
 		panic('capabilities is not an object')
 	}
 	assert 'documentFormattingProvider' in caps
+	assert 'diagnosticProvider' in caps
 }
 
 fn test_the_negotiation_notes_are_kept_for_the_log() {
