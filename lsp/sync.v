@@ -4,17 +4,25 @@ import json2
 
 // handle_did_open records a buffer the client has open. From here until
 // didClose, this store is the only copy of the file that exists.
+//
+// A check is scheduled with it: the buffer has not been read by the compiler
+// before, so whatever is wrong with it is wrong right now.
 fn handle_did_open(mut s Server, req Message) Reply {
 	params := as_object(req.params) or { return ok(null_value()) }
 	item_value := params['textDocument'] or { return ok(null_value()) }
 	item := parse_text_document(item_value) or { return ok(null_value()) }
 	s.documents.open_document(item)
+	s.schedule_check(item.uri)
 	return ok(null_value())
 }
 
 // handle_did_change applies the ranged edits. Each change is measured against
 // the result of the previous one, and a change with no range replaces the
 // buffer, which is how a client that lost track resynchronises.
+//
+// The edit is what earns a check, and the check waits for the typing to stop.
+// Nothing here runs the compiler: a didChange arrives per keystroke, and this
+// is the notification that would turn each of them into a process.
 fn handle_did_change(mut s Server, req Message) Reply {
 	params := as_object(req.params) or { return ok(null_value()) }
 	item_value := params['textDocument'] or { return ok(null_value()) }
@@ -28,21 +36,31 @@ fn handle_did_change(mut s Server, req Message) Reply {
 		s.sync_refusals++
 		return ok(null_value())
 	}
+	s.schedule_check(item.uri)
 	return ok(null_value())
 }
 
 // handle_did_close drops the buffer. Anything a lane cached for it has to be
 // dropped with it, which the lanes do on the notification.
+//
+// The findings go with it: a saved or closed file keeps no marks, so the client
+// is told to clear what it is showing for this uri rather than left with
+// errors from a buffer nobody has open.
 fn handle_did_close(mut s Server, req Message) Reply {
 	params := as_object(req.params) or { return ok(null_value()) }
 	item_value := params['textDocument'] or { return ok(null_value()) }
 	item := parse_text_document(item_value) or { return ok(null_value()) }
 	s.documents.close_document(item.uri)
+	s.clear_diagnostics(item.uri)
 	return ok(null_value())
 }
 
 // handle_did_save records a save. Most clients send no text with it, and the
 // buffer already holds the file.
+//
+// A save is worth a check even though it does not change the text: the files
+// the buffer imports may have moved on disk since the last run, and a save is
+// where the compiler's view of the project can differ from the buffer's.
 fn handle_did_save(mut s Server, req Message) Reply {
 	params := as_object(req.params) or { return ok(null_value()) }
 	item_value := params['textDocument'] or { return ok(null_value()) }
@@ -55,7 +73,9 @@ fn handle_did_save(mut s Server, req Message) Reply {
 	}
 	// a save for a buffer that is not open is a client bug, and one that did not
 	// arrive as a notification we can answer.
-	s.documents.save_document(item.uri, text)
+	if s.documents.save_document(item.uri, text) {
+		s.schedule_check(item.uri)
+	}
 	return ok(null_value())
 }
 

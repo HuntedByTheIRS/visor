@@ -48,14 +48,14 @@ fn test_unknown_method_is_method_not_found() {
 
 fn test_a_stub_answers_with_a_request_failed_and_names_the_owner() {
 	sink, mut s := server_ready_for_requests()
-	s.stub('textDocument/diagnostic', 'the diag lane')
-	s.serve_message(parse_message('{"jsonrpc":"2.0","id":3,"method":"textDocument/diagnostic"}'))
+	s.stub('textDocument/inlayHint', 'the hints lane')
+	s.serve_message(parse_message('{"jsonrpc":"2.0","id":3,"method":"textDocument/inlayHint"}'))
 	m := sink.last_message()
 	// a stub is an error, not an empty success: the editor has to be able to
 	// tell that the answer did not come from a working feature.
 	assert m.error_code == code_request_failed
 	assert m.error_text.contains('not implemented')
-	assert m.error_text.contains('the diag lane')
+	assert m.error_text.contains('the hints lane')
 }
 
 fn test_a_handler_error_keeps_the_client_id() {

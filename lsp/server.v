@@ -1,5 +1,6 @@
 module lsp
 
+import diag
 import json2
 import vtool
 
@@ -80,8 +81,11 @@ mut:
 	initialization_options json2.Any
 	settings               json2.Any
 	documents              DocumentStore
-	cancel                 CancelRegistry
-	progress               ProgressReporter
+	// diagnostics is the queue between the editor's edits and the compiler runs
+	// they earn, plus the last report each buffer was given.
+	diagnostics diag.Scheduler
+	cancel      CancelRegistry
+	progress    ProgressReporter
 	// compiler is the V binary the feature lanes run. It is resolved at
 	// startup, and compiler_error holds why there is none when there is none.
 	compiler       ?vtool.Compiler
@@ -116,8 +120,9 @@ pub mut:
 // protocol core.
 pub fn new_server(sink Sender) &Server {
 	mut s := &Server{
-		sink:      sink
-		exit_code: 1
+		sink:        sink
+		exit_code:   1
+		diagnostics: diag.new_scheduler(diag.default_policy())
 	}
 	s.register_core()
 	return s

@@ -181,13 +181,16 @@ fn test_shutdown_before_initialize_is_refused() {
 	assert s.session_state() == .uninitialized
 }
 
-fn test_the_diagnostic_stub_names_the_lane_that_will_replace_it() {
+fn test_a_pull_for_a_buffer_that_is_not_open_is_invalid_params() {
+	// The stub that used to answer here is gone: the method is served now, and
+	// what a request for an unopened buffer gets is a reason rather than an
+	// empty list. The lane's own tests carry the rest of this.
 	sink, mut s := initialized_server(asks_for_everything)
 	s.serve_message(parse_message('{"jsonrpc":"2.0","id":9,"method":"textDocument/diagnostic",' +
 		'"params":{"textDocument":{"uri":"file:///tmp/proj/a.v"}}}'))
 	reply := sink.last_message()
-	assert reply.error_code == code_request_failed
-	assert reply.error_text.contains('the diag lane')
+	assert reply.error_code == code_invalid_params
+	assert reply.error_text.contains('no open document')
 }
 
 fn test_initialize_without_params_is_an_invalid_params_error() {

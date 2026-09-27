@@ -8,6 +8,7 @@ import vtool
 // client does not have the capability.
 const cap_synchronization = 'textDocument.synchronization'
 const cap_pull_diagnostics = 'textDocument.diagnostic'
+const cap_publish_diagnostics = 'textDocument.publishDiagnostics'
 const cap_formatting = 'textDocument.formatting'
 const cap_workspace_folders = 'workspace.workspaceFolders'
 const cap_work_done_progress = 'window.workDoneProgress'

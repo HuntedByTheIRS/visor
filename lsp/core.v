@@ -24,8 +24,10 @@ fn (mut s Server) register_core() {
 	// any other, and the capability set only advertises them when the client
 	// named token types this server can emit.
 	s.on('textDocument/semanticTokens/full', handle_semantic_tokens_full)
-	// The diag lane implements this. Until it lands the method answers with a
-	// request-failed error naming the lane, because an empty diagnostic list
-	// would read as a file with no problems.
-	s.stub('textDocument/diagnostic', 'the diag lane')
+	// Diagnostics answer both ways round. A pull is served from the buffer the
+	// client holds, and a push goes out after an edit settles, so neither of
+	// them needs the file to have been saved. The capability set advertises the
+	// provider only when the client offers the request and the compiler can
+	// report a finding at all.
+	s.on('textDocument/diagnostic', handle_diagnostic)
 }
