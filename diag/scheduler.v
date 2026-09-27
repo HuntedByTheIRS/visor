@@ -178,6 +178,24 @@ fn (mut s Scheduler) release(root string) {
 	s.running[root] = left
 }
 
+// next_due is the earliest moment a scheduled check may run, or none when
+// nothing is scheduled. The serve loop sleeps until it rather than until the
+// client speaks, which is what lets a report arrive while the editor is quiet.
+pub fn (s &Scheduler) next_due() ?i64 {
+	mut soonest := i64(0)
+	mut found := false
+	for _, waiter in s.waiting {
+		if !found || waiter.due_at < soonest {
+			soonest = waiter.due_at
+			found = true
+		}
+	}
+	if !found {
+		return none
+	}
+	return soonest
+}
+
 // waiting_count is how many documents have a check scheduled.
 pub fn (s &Scheduler) waiting_count() int {
 	return s.waiting.len

@@ -295,3 +295,31 @@ fn test_a_document_reopened_at_the_same_version_is_checked_again() {
 	s.forget(uri)
 	assert s.pull(uri, 1, '') == .fresh
 }
+
+fn test_the_next_check_is_the_earliest_one_scheduled() {
+	mut s := new_scheduler(policy())
+	// nothing scheduled: there is no moment to name, and a loop that slept until
+	// one would never wake.
+	if _ := s.next_due() {
+		assert false, 'an empty scheduler named a moment'
+	}
+	s.note_edit(job_for('file:///tmp/proj/a.v', '/tmp/proj', 1, 'broken'), 0)
+	s.note_edit(job_for('file:///tmp/proj/b.v', '/tmp/proj', 1, 'broken'), 100)
+	// the first edit is due at 250 and the second at 350, so the loop comes back
+	// for the first one.
+	first := s.next_due() or { panic('a scheduled check had no moment') }
+	assert first == 250
+	// an edit inside the window moves its own check later, so the moment now
+	// belongs to the buffer nobody touched.
+	s.note_edit(job_for('file:///tmp/proj/a.v', '/tmp/proj', 2, 'broken'), 400)
+	second := s.next_due() or { panic('a scheduled check had no moment') }
+	assert second == 350
+	// and once that one is gone, the moved check is the next moment.
+	s.forget('file:///tmp/proj/b.v')
+	moved := s.next_due() or { panic('a scheduled check had no moment') }
+	assert moved == 650
+	s.forget('file:///tmp/proj/a.v')
+	if _ := s.next_due() {
+		assert false, 'a scheduler with nothing scheduled named a moment'
+	}
+}
