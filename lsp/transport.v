@@ -47,6 +47,39 @@ pub fn serve_stdio(version string) int {
 	return serve_loop(mut server, mut reader)
 }
 
+#include <poll.h>
+
+// poll_in is the poll event for "there are bytes to read".
+const poll_in = 1
+
+struct C.pollfd {
+	fd      int
+	events  i16
+	revents i16
+}
+
+fn C.poll(fds &C.pollfd, nfds u64, timeout i32) int
+
+// client_ready reports whether the client has bytes waiting, waiting up to
+// timeout_ms for them. A negative timeout waits as long as the client takes.
+//
+// read(2) alone blocks until the client speaks, which would hold a scheduled
+// check until the next keystroke. poll(2) is what lets the loop come back when
+// a check falls due with the editor quiet.
+//
+// os.fd_is_pending is not the same question: it is a readiness check that never
+// waits.
+fn client_ready(timeout_ms int) bool {
+	mut waiting := C.pollfd{
+		fd:     0
+		events: poll_in
+	}
+	if C.poll(&waiting, 1, timeout_ms) <= 0 {
+		return false
+	}
+	return (waiting.revents & poll_in) != 0
+}
+
 // serve_loop reads a batch of frames and serves them until the exit
 // notification arrives or the stream ends.
 //
@@ -54,6 +87,14 @@ pub fn serve_stdio(version string) int {
 // the code stays 1: the only clean ending is shutdown then exit.
 pub fn serve_loop(mut s Server, mut fr FrameReader) int {
 	for {
+		// With nothing buffered, the wait for the client is shared with the
+		// checks a buffer's edits earned. Sleeping on the client alone would
+		// hold a report until the next keystroke arrived.
+		wait := s.quiet_for_ms(clock())
+		if !fr.has_bytes_waiting() && wait >= 0 && (wait == 0 || !client_ready(int(wait))) {
+			s.pump_diagnostics(clock())
+			continue
+		}
 		frames := fr.read_batch()
 		if frames.len == 0 {
 			return s.code_on_exit()

@@ -97,6 +97,14 @@ pub fn (fr &FrameReader) at_eof() bool {
 	return fr.eof && fr.buf.len == 0
 }
 
+// has_bytes_waiting reports that the reader holds bytes it has not turned into a
+// frame yet. The serve loop asks before it waits on the client: a partial frame
+// needs more bytes, and waiting on the client first would delay the frame that
+// is already half here.
+fn (fr &FrameReader) has_bytes_waiting() bool {
+	return fr.buf.len > 0
+}
+
 // take parses one frame out of the buffer, or returns none when the buffer does
 // not hold a whole frame yet. A frame it cannot use comes back as a malformed
 // frame so the caller never has to distinguish "wait" from "drop".

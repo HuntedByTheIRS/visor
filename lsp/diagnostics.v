@@ -97,6 +97,21 @@ pub fn (mut s Server) pump_diagnostics(now i64) int {
 	return published
 }
 
+// quiet_for_ms is how long the serve loop may sleep on the client before it has
+// to come back for a scheduled check: 0 when one is due now, and -1 when
+// nothing is scheduled and the client may take as long as it likes.
+//
+// Without this the loop only wakes when the client writes, so a report would
+// wait for the next keystroke to go out, and the client would be told about the
+// line before the one the person just typed.
+fn (s &Server) quiet_for_ms(now i64) i64 {
+	due := s.diagnostics.next_due() or { return -1 }
+	if due <= now {
+		return 0
+	}
+	return due - now
+}
+
 // clear_diagnostics drops a buffer's report and clears whatever an editor is
 // showing for it. A closed file keeps no marks: they would sit on lines nobody
 // is looking at, and nothing would ever remove them.
