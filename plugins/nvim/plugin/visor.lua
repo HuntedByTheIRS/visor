@@ -59,6 +59,20 @@ end
 
 local group = vim.api.nvim_create_augroup('visor', { clear = true })
 
+-- Neovim decides a `.v` buffer's filetype by reading its first 500 lines: a
+-- line that ends in a period makes it Coq, and a line ending in a semicolon or
+-- a `module name (` header makes it Verilog. V for both, so a buffer nobody
+-- argued about arrives as `coq` and no server starts. Visor's own entry point
+-- is such a file, which means the plugin would not attach to its own source.
+--
+-- The runtime reads g:filetype_v before it reads anything, so the answer is
+-- declared here and detection stops asking. `.vv` and `.vsh` are in the
+-- runtime's own table as V and need nothing from this file. A user who set the
+-- variable keeps what they set.
+if vim.g.filetype_v == nil then
+  vim.g.filetype_v = 'v'
+end
+
 vim.api.nvim_create_autocmd('FileType', {
   group = group,
   pattern = 'v',

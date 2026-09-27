@@ -5,9 +5,17 @@ and leaves the answers to the server.
 
 It needs Neovim 0.11 or later and a `visor` binary, either on `PATH` or named in
 `setup()`. The 0.11 floor is `vim.lsp.get_clients` and the filter that reaches a
-client whose initialize reply is still in flight. There is no ftdetect file here
-and no syntax file: Neovim already maps `.v` to the `v` filetype by itself,
-which the test checks rather than assumes.
+client whose initialize reply is still in flight.
+
+There is no syntax file here. Neovim's own table maps `.vv` and `.vsh` to the `v`
+filetype, and `.v` goes through a heuristic that reads the first 500 lines of the
+buffer: a line ending in a period answers Coq, a line ending in a semicolon or a
+`module name (` header answers Verilog. V shares that extension, and V source
+trips the heuristic — visor's own `main.v` does, inside its usage string, so the
+plugin would not attach to the source it ships with. Loading the plugin sets
+`g:filetype_v` to `v` unless something already set it, which is the runtime's own
+door for this and stops detection before it guesses. All three extensions then
+arrive as `v` and the filetype hook is what starts the server.
 
 ## Install
 
@@ -101,7 +109,7 @@ plugins/nvim/test/run.sh --bin /tmp/visor
 
 | Script | What it settles |
 | --- | --- |
-| `connect.lua` | a V buffer brings a client through initialize, the root search lands on the project and falls back to the buffer's directory when there is no marker, two projects are two clients, `on_attach` ran, and `:VisorInfo` and `stop()` report what happened |
+| `connect.lua` | a V buffer brings a client through initialize, the root search lands on the project and falls back to the buffer's directory when there is no marker, two projects are two clients, `on_attach` ran, and `:VisorInfo` and `stop()` report what happened. Every buffer in it is opened as a file, so the filetype is the editor's answer and not the script's: `.v`, `.vv` and `.vsh` each reach the hook, including a `.v` whose content is the shape the Coq heuristic claims |
 | `format.lua` | `:VisorFormat` and format on save put what `v fmt` wrote into the buffer, a save with the setting off leaves it alone, a per-buffer override wins, the file on disk only changes at save, and a save the server never answers for still lands and says so |
 | `highlights.lua` | tokens arrive and land as highlight: the module keyword, a comment, a struct name, a field, a const, a number and a string are each read back out of the editor with the type the walk gave them, and a const carries the read only modifier |
 
