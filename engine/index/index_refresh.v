@@ -55,6 +55,53 @@ pub fn (mut i IndexingRoot) ensure_indexed() {
 	loglib.with_duration(time.since(now)).info('Reindexing finished')
 }
 
+// refresh_stub_file replaces one file's stubs with the ones its content parses
+// to, and writes nothing.
+//
+// mark_as_dirty does the same work and then saves the index to disk. A server
+// has to keep the two apart: the text it was handed is a buffer nobody has
+// saved, so writing it anywhere leaves the file on disk disagreeing with the
+// text the buffer describes. Saving is also where mark_as_dirty dies, inside
+// the index serializer, which is the second reason this path exists.
+//
+// The file index is copied through a heap struct before it is stored. In V
+// 0.5.2 a file index stored straight from index_file's return value leaves a
+// nil sink in the map, and a file whose sink is nil drops out of the index
+// without a word: get_sinks skips it, so every declaration in that file stops
+// resolving and the answers go back to whatever the file on disk said.
+//
+// A path inside the root with no entry of its own is taken, because that is a
+// file the person has opened and not saved yet. False means no root owns the
+// path.
+pub fn (mut i IndexingRoot) refresh_stub_file(filepath string, content string) !bool {
+	if !i.contains(filepath) {
+		return false
+	}
+
+	mut p := parser.Parser.new()
+	defer {
+		p.free()
+	}
+
+	indexed := i.index_file(filepath, content, mut p) or {
+		return error('cannot index ${filepath}: ${err}')
+	}
+	held := &FileIndex{
+		kind:               indexed.kind
+		file_last_modified: indexed.file_last_modified
+		stub_list:          indexed.stub_list
+		sink:               indexed.sink
+	}
+	if isnil(held.sink) || isnil(held.stub_list) {
+		// Saying so beats storing a stubless entry: the entry would take the
+		// file's declarations out of the index and nothing would report it.
+		return error('the index for ${filepath} came back without its stubs')
+	}
+	i.index.per_file.data[filepath] = *held
+	i.updated_at = time.now()
+	return true
+}
+
 // mark_as_dirty reindexes a file after its content changed and saves the index; paths outside this root are ignored.
 pub fn (mut i IndexingRoot) mark_as_dirty(filepath string, new_content string) ! {
 	if filepath !in i.index.per_file.data {

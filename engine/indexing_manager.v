@@ -32,6 +32,30 @@ pub fn (mut a IndexingManager) setup_stub_indexes() {
 	stubs_index = a.stub_index
 }
 
+// refresh_file replaces one file's stubs with the ones the content parses to
+// and rebuilds the workspace index, so a buffer nobody has saved answers the
+// questions a saved file answers. Nothing reaches the disk.
+//
+// False means no root owns the path, which a caller has to tell apart from a
+// refresh that ran: a buffer outside every root is a buffer this index cannot
+// describe, and answering from the file that happens to sit at its path would
+// describe a different text.
+pub fn (mut a IndexingManager) refresh_file(path string, content string) !bool {
+	mut refreshed := false
+	for mut root in a.indexer.roots {
+		if !root.contains(path) {
+			continue
+		}
+		refreshed = root.refresh_stub_file(path, content)!
+		break
+	}
+	if !refreshed {
+		return false
+	}
+	a.setup_stub_indexes()
+	return true
+}
+
 // update_stub_indexes_from_sinks refreshes the global stub index for the given sinks.
 pub fn (mut a IndexingManager) update_stub_indexes_from_sinks(changed_sinks []psi.StubIndexSink) {
 	all_sinks := a.all_sinks()
