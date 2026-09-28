@@ -4,6 +4,8 @@
 
 ```sh
 v -o /tmp/visor .                    # build
+v -prod -o /tmp/visor-prod .         # the build a release ships
+v -prod test .                       # the suite built the same way
 v fmt -verify .                      # format gate
 v test .                             # every module's tests
 v test vtool/                        # one module
@@ -13,6 +15,13 @@ npx --yes markdownlint-cli2@0.23.3   # markdown gate, config in .markdownlint-cl
 `v test .` recurses into the module directories, so it is the whole suite. The
 markdown gate reads `.markdownlint-cli2.jsonc`, which carries the globs, the
 ignored trees and the rules this project switches off with a reason for each.
+
+`-prod` is a different build rather than a faster one: every warning becomes an
+error and every `assert` statement is dropped, in the tests as much as in the
+server. A test that needs something to happen calls it as a statement and
+asserts on what came back, so the call is there in both builds. `v -prod test .`
+runs the suite with the asserts gone, which is what finds a call left inside
+one, and CI builds the production binary and drives it with the smoke run.
 
 `v fmt` is the only formatter here. Do not add a second one, and do not reformat
 code by hand into a shape `v fmt` would undo.
