@@ -36,8 +36,8 @@ being built toward, and the state column below says which modules have landed.
 | --- | --- | --- | --- |
 | `vtool/` | in the tree | V binary discovery, the version and capability probe, `-check` over stdin, `fmt -` | nothing |
 | `engine/` | in the tree | tree-sitter V to PSI to index, ported from v-analyzer | its own submodules and the vendored bindings |
-| `features/` | in the tree | the typed answers the handlers send: the whole-buffer `v fmt` edit, and the token walk over the parse tree | `engine/`, `vtool/` |
-| `lsp/` | in the tree | the wire: framing, capabilities, routing, sync, cancellation, progress, shutdown, and the diagnostics lane | `features/` for the answers, `diag/` for the checks, plus `io`, `json2`, `os` and `vtool` |
+| `features/` | in the tree | the typed answers the handlers send: the whole-buffer `v fmt` edit, the token walk over the parse tree, and the inlay hint walk over an open buffer and the workspace index | `engine/`, `vtool/` |
+| `lsp/` | in the tree | the wire: framing, capabilities, routing, sync, cancellation, progress, shutdown, and the diagnostics and inlay hint lanes | `features/` for the answers, `diag/` for the checks, plus `io`, `json2`, `os` and `vtool` |
 | `diag/` | in the tree | debounce per document, one check in flight per module root, the last report per buffer | `vtool/` |
 | `main.v` | in the tree | the entry point and the stdio loop | `lsp/` |
 | `plugins/nvim/` | in the tree | the Neovim client: server search and attach | nothing, it speaks the protocol |
@@ -114,3 +114,33 @@ one and its column is a byte offset into the line, while the protocol counts
 lines from zero and characters in UTF-16 code units, so a line holding an
 astral character would otherwise be placed short by one unit per character
 before the finding.
+
+## Inlay hints, and the index they read
+
+The hint lane answers from the parse tree, not from a compiler run. `v ast -p`
+was measured first and it fills only the types written in the source, which
+leaves a `:=` with nothing to show, so the types come from the ported engine
+instead: `engine/` parses a buffer into a PSI and `engine/session.v` stands up
+the stub index the inferer reads.
+
+A session owns two things. One is the workspace index, built in `initialized`
+from the folders the client named, because the reply to `initialize` is what the
+client is waiting on. The other is the parse of every open buffer, replaced on
+`didOpen`, `didChange` and `didSave` and dropped on `didClose`. A buffer's stubs
+go into the index in place of the file's, and nothing is written to disk, so an
+unsaved buffer is described as it stands. The measured cost is 143 ms and 15 ms
+of stub index for this tree, and 8.2 s and 645 ms for vlib, which is why the
+index is built once and the buffers are what change.
+
+Two caches sit under the inference and both were keyed by a path, a node kind
+and a range with no text in the key, so an edit that left every offset where it
+was could read back the previous text's answer. `psi.forget_answers()` drops
+both, and the session calls it whenever a buffer changes.
+
+The walk itself is in `features/inlay_hints.v` and hands back labels with byte
+offsets. Four families are in it: the parameter name an argument lands on, the
+field name a positional struct literal initializes, the type a `:=` infers, and
+the code a `defer` places, shown whole up to two lines and as a snippet past
+that. The wire half is `lsp/inlay_hints.v`. A request the index cannot answer is
+refused in words, because an empty list reads to a client as a buffer with
+nothing worth saying in it.

@@ -82,16 +82,17 @@ compiler on stdin. A client that shows what the server pushes gets the same
 findings as `textDocument/publishDiagnostics` once the typing stops, and a
 `didClose` takes them away again.
 
-Formatting, semantic tokens and diagnostics are the three lanes that answer
-today, and each one is advertised only where it can be served: formatting when
-the startup probe found a compiler that rewrites a buffer, tokens when the
-client named token types this server emits, and diagnostics when the client
-offered the pull and the probe found a compiler that reports a finding for a
-buffer it cannot compile. The providers that have no handlers yet (hover,
-completion, definition and the rest) are left unadvertised so they answer
-`MethodNotFound` instead of something empty, and wiring the engine to them is
-the work in progress. Everything else under Features is the v0.1.0 target
-rather than something you can install today.
+Formatting, semantic tokens, inlay hints and diagnostics are the lanes that
+answer today, and each one is advertised only where it can be served: formatting
+when the startup probe found a compiler that rewrites a buffer, tokens when the
+client named token types this server emits, hints when the client offered them
+and a workspace folder was indexed, and diagnostics when the client offered the
+pull and the probe found a compiler that reports a finding for a buffer it
+cannot compile. The providers that have no handlers yet (hover, completion,
+definition and the rest) are left unadvertised so they answer `MethodNotFound`
+instead of something empty, and wiring the engine to them is the work in
+progress. Everything else under Features is the v0.1.0 target rather than
+something you can install today.
 
 ## Features, targeted for v0.1.0
 
@@ -104,6 +105,7 @@ rather than something you can install today.
 | Symbols | document symbols and workspace symbols | N/A |
 | Selection and view | folding ranges, document highlight, selection range, range formatting | N/A |
 | Semantic tokens | declarations, types, literals, comments, keywords and operators, read from the parse tree | in the tree |
+| Inlay hints | parameter names at call sites, field names in a positional struct literal, the type a `:=` infers, and the code a `defer` places, answered from the workspace index | in the tree |
 | Code actions | code actions, code lens, call hierarchy | N/A |
 | Formatting | `v fmt` over the whole buffer, on request or on save | in the tree |
 
