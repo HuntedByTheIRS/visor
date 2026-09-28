@@ -30,7 +30,14 @@ fn (v VarDeclaration) index_of(def VarDefinition) int {
 	return -1
 }
 
-fn (v VarDeclaration) initializer_of(def VarDefinition) ?PsiElement {
+// initializer_of returns the expression that initializes def, or none when the
+// declaration gives it none.
+//
+// A declaration with one expression initializes every name it declares with
+// that one value, which is how a multi-return call is written: the call is the
+// initializer of each name on the left, and the second name does not index past
+// the end of the list.
+pub fn (v VarDeclaration) initializer_of(def VarDefinition) ?PsiElement {
 	index := v.index_of(def)
 	if index == -1 {
 		return none
