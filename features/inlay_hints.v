@@ -260,11 +260,46 @@ fn defer_hints(block psi.PsiElement, text string, mut hints []Hint) {
 		codes << shorten(deferred[i])
 	}
 	hints << Hint{
-		offset:  element_end(block) - 1
+		offset:  defer_anchor(text, element_end(block))
 		label:   'defer: ${codes.join('; ')}'
 		kind:    .type_
 		tooltip: deferred.join('\n')
 	}
+}
+
+// defer_anchor is where a deferred label is drawn: the end of the last line of
+// the block's body, which is the line above the closing brace.
+//
+// The brace itself is where the deferred code runs, and a label sitting on it
+// lands after the brace at the far left of nothing. The reader wants it next to
+// the statement it follows, so the anchor walks back over the whitespace in
+// front of the brace and stops after the last thing written.
+//
+// A block whose body shares the brace's line has nothing above to attach to, and
+// there the brace is the anchor.
+fn defer_anchor(text string, block_end int) int {
+	mut brace := block_end - 1
+	if brace > text.len - 1 {
+		brace = text.len - 1
+	}
+	if brace < 0 {
+		return 0
+	}
+	mut index := brace
+	for index > 0 && is_block_whitespace(text[index - 1]) {
+		index--
+	}
+	// Nothing above the brace to attach to, or the body shares the brace's line.
+	if index == 0 || !text[index..brace + 1].contains('\n') {
+		return brace
+	}
+	return index
+}
+
+// is_block_whitespace reports whether a byte is whitespace the block's own
+// indentation is made of, which is what a label skips back over.
+fn is_block_whitespace(c u8) bool {
+	return c == ` ` || c == `	` || c == `\n` || c == `\r`
 }
 
 // deferred_code strips the keyword and the braces a defer statement carries, so

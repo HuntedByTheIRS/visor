@@ -201,20 +201,20 @@ check('a nested call gets its own parameter name',
   nested ~= nil and nested.row == nested_row,
   nested and string.format('row %d, wanted row %d', nested.row, nested_row) or 'no n: hint')
 
--- `defer println(scaled)` runs at the end of the block it is written in, so the
--- label belongs on the closing brace of that block and not on the defer line.
-local defer_row = line_of(bufnr, 'defer println(scaled)')
+-- `defer println(scaled)` runs at the end of the block it is written in, which
+-- is the last line above the closing brace. A label on the brace itself lands
+-- after the brace, at the far left of the block.
 local closing_row = -1
-for row = defer_row + 1, defer_row + 10 do
+for row = line_of(bufnr, 'defer println(scaled)') + 1, 30 do
   if vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1] == '}' then
     closing_row = row
     break
   end
 end
 local deferred = hint_at(hints, 'defer: println(scaled)')
-check('the deferred code is spelled out where it runs',
-  deferred ~= nil and deferred.row == closing_row,
-  deferred and string.format('row %d, wanted row %d', deferred.row, closing_row)
+check('the deferred code is spelled out above the brace it runs at',
+  deferred ~= nil and deferred.row == closing_row - 1 and deferred.row > -1,
+  deferred and string.format('row %d, wanted row %d', deferred.row, closing_row - 1)
     or string.format('no defer: hint, %s', labels))
 
 visor.stop()

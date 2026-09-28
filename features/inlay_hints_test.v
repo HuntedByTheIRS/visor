@@ -111,9 +111,11 @@ fn test_a_defer_hint_sits_where_the_code_runs() {
 	hints := hints_in(hint_buffer, HintOptions{})
 	defer_hint := find_hint(hints, 'defer: println(text)') or { panic('no defer hint') }
 
-	// The anchor is the block's closing brace, which is where the deferred call
-	// lands, and the tooltip holds the code without the shortening.
-	assert hint_buffer[defer_hint.offset..defer_hint.offset + 1] == '}'
+	// The anchor is the end of the last line of the body, which is the line above
+	// the closing brace. A label on the brace lands after the brace, in front of
+	// nothing.
+	assert hint_buffer[defer_hint.offset - 1] == `)`
+	assert hint_buffer[defer_hint.offset] == `\n`
 	assert defer_hint.tooltip == 'println(text)'
 }
 

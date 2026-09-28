@@ -226,8 +226,12 @@ fn test_a_hint_carries_a_position_a_client_can_place() {
 		line:      3
 		character: 16
 	}
-	// the defer label is drawn at the closing brace of main, which is line 7
-	assert positions.last().line == 7
+	// the defer label is drawn at the end of the last line of the body, which is
+	// line 6, above the closing brace on line 7
+	assert positions.last() == Position{
+		line:      6
+		character: 14
+	}
 }
 
 // The function this buffer calls is declared in the buffer itself and is on no
