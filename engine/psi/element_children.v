@@ -40,7 +40,14 @@ pub fn (n &PsiElementImpl) children() []PsiElement {
 	return result
 }
 
-// named_children returns every child element whose type is not .unknown.
+// named_children returns every child element tree-sitter marks as named, which
+// is how a walk skips punctuation without losing a rule it has no name for.
+//
+// The mark is asked for rather than inferred. Coverage of `NodeType` is not the
+// same question: a grammar rule the generated table has no member for arrives
+// as `.unknown`, and a filter that read that as "anonymous" dropped the
+// positional elements of `Point{ 1, 2 }`, which parse as `element` rules that
+// the table does not carry.
 pub fn (n &PsiElementImpl) named_children() []PsiElement {
 	if !n.is_valid_tree() {
 		return []
@@ -54,7 +61,7 @@ pub fn (n &PsiElementImpl) named_children() []PsiElement {
 	mut result := []PsiElement{}
 	mut child := n.node.first_child() or { return [] }
 	for {
-		if child.type_name != .unknown {
+		if child.is_named() {
 			result << create_element(child, n.containing_file)
 		}
 		child = child.next_sibling() or { break }

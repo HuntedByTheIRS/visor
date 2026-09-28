@@ -63,7 +63,7 @@ fn test_parent_nth_counts_from_the_element_itself() {
 	defer {
 		p.free()
 	}
-	res := p.parse_code('pub struct A {\n\tfield int\n}\n')
+	res := p.parse_code('pub struct A {\n	field int\n}\n')
 	file := psi.new_psi_file('psi_accessors_test.v', res.tree, res.source_text)
 	for child in file.root.children() {
 		if child is psi.StructDeclaration {
@@ -78,4 +78,38 @@ fn test_parent_nth_counts_from_the_element_itself() {
 		}
 	}
 	assert false
+}
+
+// init_elements reports the text of every element a struct literal initializes,
+// in source order, whichever list the parser used for it.
+fn init_elements(code string) []string {
+	mut p := parser.Parser.new()
+	defer {
+		p.free()
+	}
+	res := p.parse_code(code)
+	file := psi.new_psi_file('psi_accessors_test.v', res.tree, res.source_text)
+	mut elements := []string{}
+	collect_init_elements(file.root, mut elements)
+	return elements
+}
+
+fn collect_init_elements(element psi.PsiElement, mut elements []string) {
+	if element is psi.TypeInitializer {
+		for item in element.element_list() {
+			elements << item.get_text().trim_space()
+		}
+	}
+	for child in element.children() {
+		collect_init_elements(child, mut elements)
+	}
+}
+
+fn test_a_struct_literal_reports_its_elements_in_both_spellings() {
+	// The positional form is the one a field-name hint is for: its names are
+	// not in the text, so a reader that only walked the keyed list had nothing
+	// to attach a hint to.
+	assert init_elements('fn f() {\n	p := Point{ 1, 2 }\n}\n') == ['1', '2']
+	assert init_elements('fn f() {\n	p := Point{ x: 1, y: 2 }\n}\n') == ['x: 1', 'y: 2']
+	assert init_elements('fn f() {\n	p := Point{}\n}\n') == []
 }
