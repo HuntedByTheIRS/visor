@@ -374,9 +374,13 @@ fn test_a_push_client_is_told_what_the_buffer_holds() {
 	open_buffer(mut s, probe_uri, broken_buffer)
 	// The check waits for the typing to stop, so a pass that runs before the
 	// debounce expires publishes nothing.
-	assert s.pump_diagnostics(0) == 0
+	early := s.pump_diagnostics(0)
+	assert early == 0
 	assert push_count(sink) == 0
-	assert due_now(mut s) == 1
+	// The pump is written outside the assert: a -prod build drops every assert
+	// statement, and a call left inside one never runs.
+	ran := due_now(mut s)
+	assert ran == 1
 	note := last_pushed(sink) or { panic('nothing was pushed') }
 	assert (note['uri'] or { panic('the push has no uri') }).str() == probe_uri
 	assert (note['version'] or { panic('the push has no version') }).int() == 1
@@ -393,7 +397,8 @@ fn test_a_fix_in_the_buffer_clears_what_was_pushed() {
 	due_now(mut s)
 	assert push_count(sink) == 1
 	edit_buffer(mut s, probe_uri, 2, clean_buffer)
-	assert due_now(mut s) == 1
+	ran := due_now(mut s)
+	assert ran == 1
 	note := last_pushed(sink) or { panic('nothing was pushed') }
 	// an empty list is how a client is told to take the marks away.
 	assert pushed_items(note).len == 0
@@ -405,7 +410,8 @@ fn test_a_client_that_shows_no_pushed_findings_is_not_pushed_to() {
 	open_buffer(mut s, probe_uri, broken_buffer)
 	// The check runs, because this client pulls. Nothing goes out on the wire,
 	// because it never said it would show a pushed finding.
-	assert due_now(mut s) == 0
+	ran := due_now(mut s)
+	assert ran == 0
 	assert push_count(sink) == 0
 	pull_report(mut s, probe_uri, '')
 	assert items_of(sink.last_message()).len == 1
@@ -440,7 +446,8 @@ fn test_a_session_with_no_compiler_says_so_rather_than_answering_nothing() {
 	assert reply.error_text.contains('no V compiler to check with')
 	assert reply.error_text.contains('no V compiler on PATH')
 	// and nothing is scheduled for a compiler that cannot run.
-	assert due_now(mut s) == 0
+	ran := due_now(mut s)
+	assert ran == 0
 }
 
 fn test_a_compiler_that_cannot_check_says_which_one() {
