@@ -98,6 +98,11 @@ local function on_attach(client, bufnr)
       vim.lsp.semantic_tokens.start(bufnr, client.id)
     end
   end
+  -- Hints are off until a client asks for them, which is the opposite of the
+  -- token lane above. A server that never advertised them is not asked.
+  if config.options.inlay_hints and client.server_capabilities.inlayHintProvider then
+    vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+  end
 end
 
 -- start attaches a client to a buffer. It returns the client, or nil when the
@@ -176,6 +181,7 @@ function M.info()
     return lines
   end
   lines[#lines + 1] = 'format on save: ' .. (config.options.format_on_save and 'on' or 'off')
+  lines[#lines + 1] = 'inlay hints: ' .. (config.options.inlay_hints and 'on' or 'off')
   for _, client in ipairs(clients) do
     local reported = client.server_info or {}
     -- A client whose initialize reply is still in flight has no server info

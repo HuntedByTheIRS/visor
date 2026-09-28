@@ -55,6 +55,7 @@ require('visor').setup({
   format_on_save = false,  -- write through `v fmt` on every save
   format_timeout_ms = 10000, -- how long a formatting request may take
   semantic_tokens = true,  -- ask for highlighting tokens on attach
+  inlay_hints = true,      -- turn hints on for a buffer at attach
   root_markers = { 'v.mod', '.git' },
 })
 ```
@@ -85,6 +86,20 @@ and operators. A call to a function is not among them, because telling a call
 from a field of the same name needs the index rather than the tree, so the
 editor's own syntax highlighting keeps covering those.
 
+`inlay_hints` is on for the opposite reason to `semantic_tokens`. Neovim keeps
+inlay hints off until something asks, so a client whose plugin never asks shows
+an empty screen even when the server has an answer at every position. The plugin
+asks on attach, and only for a server that advertised `inlayHintProvider`.
+`:VisorInfo` reports whether the setting is on. The hints themselves are turned
+on per buffer, so `vim.lsp.inlay_hint.enable(false, { bufnr = bufnr })` stops
+them in one window without touching the setting.
+
+What a hint says comes from the server, and the four families it has today are
+the parameter name an argument lands on, the field name a positional struct
+literal initializes, the type a `:=` infers, and the code a `defer` places. The
+types come from an index the server builds over the workspace folders, so a
+project with no folder open gets no hints rather than a guess.
+
 ## Commands
 
 | Command | What it does |
@@ -112,6 +127,7 @@ plugins/nvim/test/run.sh --bin /tmp/visor
 | `connect.lua` | a V buffer brings a client through initialize, the root search lands on the project and falls back to the buffer's directory when there is no marker, two projects are two clients, `on_attach` ran, and `:VisorInfo` and `stop()` report what happened. Every buffer in it is opened as a file, so the filetype is the editor's answer and not the script's: `.v`, `.vv` and `.vsh` each reach the hook, including a `.v` whose content is the shape the Coq heuristic claims |
 | `format.lua` | `:VisorFormat` and format on save put what `v fmt` wrote into the buffer, a save with the setting off leaves it alone, a per-buffer override wins, the file on disk only changes at save, and a save the server never answers for still lands and says so |
 | `highlights.lua` | tokens arrive and land as highlight: the module keyword, a comment, a struct name, a field, a const, a number and a string are each read back out of the editor with the type the walk gave them, and a const carries the read only modifier |
+| `hints.lua` | hints arrive and the editor draws them: a field name on the value it names, a parameter name on the argument, a nested call's own parameter name, an inferred type and the code a `defer` places, each on the line the walk put it on. The plugin turns them on with no `setup()` call, and the script asks the server for nothing itself |
 
 Nothing in them mocks the protocol.
 

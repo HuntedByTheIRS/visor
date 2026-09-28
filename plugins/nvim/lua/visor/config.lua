@@ -32,6 +32,12 @@ M.defaults = {
   -- false stops that, it does not turn the highlighting off.
   semantic_tokens = true,
 
+  -- inlay_hints turns hints on for a buffer at attach, when the server said in
+  -- initialize that it has them. Neovim's hints start off and stay off until
+  -- something asks, so a client whose plugin never asks shows none of them,
+  -- which looks the same as a server that has nothing to say.
+  inlay_hints = true,
+
   -- root_markers decide the project root for a buffer, nearest one first. A
   -- server holds one root per client, so two projects stay two clients.
   root_markers = { 'v.mod', '.git' },
