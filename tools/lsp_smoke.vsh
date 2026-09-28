@@ -426,6 +426,38 @@ fn hint_position(item json2.Any) (int, int) {
 	return (position['line'] or { json2.Any(-1) }).int(), (position['character'] or { json2.Any(-1) }).int()
 }
 
+// token_kind_at walks the delta-encoded token data and returns the kind of the
+// token that starts at a line and a column, or an empty string when nothing
+// starts there.
+//
+// The encoding counts from the token before: a token carries the step to its
+// line and, within the same line, the step to its column, so the position of
+// each one is a running sum rather than something the answer states.
+fn token_kind_at(data []json2.Any, line int, column int, types []string) string {
+	mut current_line := 0
+	mut current_column := 0
+	mut index := 0
+	for index + 3 < data.len {
+		delta_line := data[index].int()
+		delta_start := data[index + 1].int()
+		token_type := data[index + 3].int()
+		if delta_line == 0 {
+			current_column += delta_start
+		} else {
+			current_line += delta_line
+			current_column = delta_start
+		}
+		if current_line == line && current_column == column {
+			if token_type < 0 || token_type >= types.len {
+				return ''
+			}
+			return types[token_type]
+		}
+		index += 5
+	}
+	return ''
+}
+
 // line_of finds the first line holding a needle, so an expected position in the
 // checks below does not have to be recounted after the fixture is edited.
 fn line_of(text string, needle string) int {
@@ -564,6 +596,22 @@ fn main() {
 		runner.record('the first token is the `module` keyword', first_length == 6
 			&& first_type == keyword_index,
 			'length ${first_length}, type ${first_type}, keyword sits at ${keyword_index}')
+
+		// The compile-time names are the compiler's own and resolve to nothing in
+		// any index, so the walk is the only thing that can type them. Both halves
+		// of `$embed_file('v.mod').to_string()` are checked, because the name and
+		// the method are the two answers a reader was missing.
+		builtin_line := line_of(buffer, 'home := $env(')
+		builtin_column := column_of(buffer, builtin_line, '$env')
+		got_builtin := token_kind_at(data, builtin_line, builtin_column, types)
+		runner.record('a compile-time builtin is a keyword', got_builtin == 'keyword',
+			'kind ${got_builtin} at ${builtin_line}:${builtin_column}')
+
+		method_line := line_of(buffer, '$embed_file(')
+		method_column := column_of(buffer, method_line, 'to_string')
+		got_method := token_kind_at(data, method_line, method_column, types)
+		runner.record('the method on a compile-time value is a method', got_method == 'method',
+			'kind ${got_method} at ${method_line}:${method_column}')
 	}
 
 	// Inlay hints come from the buffer's parse and the workspace index, so this
@@ -594,6 +642,18 @@ fn main() {
 		}
 		runner.record('the buffer earns a field label and a type label',
 			'x:' in labels && type_hint_found, labels.str())
+
+		// A compile-time builtin produces what the compiler says it does, and the
+		// engine is the only place that answer can come from: there is no
+		// declaration of `$env` or `$embed_file` in any index.
+		mut comptime_labels := 0
+		for label in labels {
+			if label == ': string' {
+				comptime_labels++
+			}
+		}
+		runner.record('a compile-time value is labelled with what it produces',
+			comptime_labels == 2, '${comptime_labels} string labels in ${labels.str()}')
 		// `base := Point{ 2, 3 }` is where the first value is, and the hint has
 		// to sit on the `2` rather than near it.
 		want_line := line_of(buffer, 'base := Point{')

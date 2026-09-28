@@ -9,6 +9,10 @@ module main
 // answers for: a positional literal whose field names are not in the text, a
 // call whose parameter names come from the declaration, and a `:=` the engine
 // types.
+//
+// The two compile-time lines are what the token request and the hint request
+// read there: `$env` is a keyword and `to_string` is the method a call on what a
+// builtin produced goes through, and the `:=` on each one is a string.
 
 struct Point {
 	x int
@@ -22,7 +26,11 @@ fn scale(p Point, factor int) Point {
 fn main() {
 	base := Point{2, 3}
 	scaled := scale(base, 4)
+	home := $env('HOME')
+	embedded := $embed_file('v.mod').to_string()
 	println(greeter.greeting())
 	println(scaled)
 	println(base)
+	println(home)
+	println(embedded)
 }
