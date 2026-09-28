@@ -2,10 +2,13 @@ module psi
 
 import engine.psi.types
 
-// The compile-time builtins belong to the compiler rather than to any file. There
-// is no declaration for the index to find and no stub to look in, so what each of
-// them produces is written down here: `$env('HOME')` is a string on whatever
-// machine runs the build, and `$embed_file` builds a type of its own.
+// comptime_call_type is what a compile-time builtin produces, or none when the
+// call is not one the compiler answers itself.
+//
+// These builtins belong to the compiler rather than to any file. There is no
+// declaration for the index to find and no stub to look in, so what each of them
+// produces is written down here: `$env('HOME')` is a string on whatever machine
+// runs the build, and `$embed_file` builds a type of its own.
 //
 // Only the builtins that produce a value are named. `$compile_error` stops the
 // build instead of producing one, so a `:=` reading it is dead code and gets no
