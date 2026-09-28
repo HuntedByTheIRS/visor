@@ -9,6 +9,10 @@
     "diagnostic": {
       "dynamicRegistration": false
     },
+    "documentSymbol": {
+      "dynamicRegistration": false,
+      "hierarchicalDocumentSymbolSupport": true
+    },
     "formatting": {
       "dynamicRegistration": false
     },
@@ -17,6 +21,11 @@
     },
     "inlayHint": {
       "dynamicRegistration": false
+    },
+    "rename": {
+      "dynamicRegistration": false,
+      "prepareSupport": true,
+      "prepareSupportDefaultBehavior": 1
     },
     "semanticTokens": {
       "dynamicRegistration": false,
@@ -76,6 +85,9 @@
   },
   "workspace": {
     "configuration": true,
+    "symbol": {
+      "dynamicRegistration": false
+    },
     "workspaceFolders": true
   }
 }

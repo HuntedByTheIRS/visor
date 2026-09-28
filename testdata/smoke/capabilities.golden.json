@@ -9,10 +9,14 @@
         "workspaceDiagnostics": false
       },
       "documentFormattingProvider": true,
+      "documentSymbolProvider": true,
       "inlayHintProvider": {
         "resolveProvider": false
       },
       "positionEncoding": "utf-16",
+      "renameProvider": {
+        "prepareProvider": true
+      },
       "semanticTokensProvider": {
         "full": true,
         "legend": {
@@ -56,7 +60,8 @@
           "changeNotifications": true,
           "supported": true
         }
-      }
+      },
+      "workspaceSymbolProvider": true
     },
     "serverInfo": {
       "name": "visor",

@@ -490,6 +490,37 @@ fn column_of(text string, line_number int, needle string) int {
 	return lines[line_number].index(needle) or { -1 }
 }
 
+// symbol_line reads the line a symbol was named on. An outline answer states the
+// span of the name in a selection range, and a search answer states it in a
+// location, so the key says which of the two shapes the answer has.
+fn symbol_line(item json2.Any, key string) int {
+	obj := as_map(item) or { return -1 }
+	span := as_map(obj[key] or { json2.Any(no_map()) }) or { return -1 }
+	start := as_map(span['start'] or { json2.Any(no_map()) }) or { return -1 }
+	return (start['line'] or { json2.Any(-1) }).int()
+}
+
+// location_line reads the line a search answer points at: a location holds the
+// uri and the span of the name, so the line is a key inside the span.
+fn location_line(item json2.Any) int {
+	obj := as_map(item) or { return -1 }
+	location := as_map(obj['location'] or { json2.Any(no_map()) }) or { return -1 }
+	return symbol_line(location, 'range')
+}
+
+// location_uri reads the file a search answer points at.
+fn location_uri(item json2.Any) string {
+	obj := as_map(item) or { return '' }
+	location := as_map(obj['location'] or { json2.Any(no_map()) }) or { return '' }
+	return (location['uri'] or { json2.Any('') }).str()
+}
+
+// edit_text reads the name one edit writes.
+fn edit_text(item json2.Any) string {
+	obj := as_map(item) or { return '' }
+	return (obj['newText'] or { json2.Any('') }).str()
+}
+
 fn main() {
 	bin := arg_value('--bin') or {
 		eprintln(usage)
@@ -686,6 +717,119 @@ fn main() {
 		runner.record('a declaration names the attributes it carries',
 			attribute_line == want_attribute_line && attribute_column == want_attribute_column,
 			'${attribute_line}:${attribute_column}, wanted ${want_attribute_line}:${want_attribute_column}')
+	}
+
+	// The outline is a fact about one buffer's parse, the search is a fact about
+	// the index, and a rename is a plan the client applies. Asking for all four
+	// over the wire is what shows the routes, the encodings and the index line up
+	// once there is a pipe between them.
+	outline := '{"jsonrpc":"2.0","id":11,"method":"textDocument/documentSymbol","params":' +
+		'{"textDocument":{"uri":"${root_uri}"}}}'
+	runner.send(outline)
+	if reply := runner.expect_reply('an outline is answered', 11, wait_for_reply_ms) {
+		runner.record('the outline is not an error', !reply.err, reply.etext)
+		items := as_list(reply.result) or { no_list() }
+		mut names := []string{}
+		mut point_children := 0
+		mut scale_line := -1
+		for item in items {
+			obj := as_map(item) or { continue }
+			name := (obj['name'] or { json2.Any('') }).str()
+			names << name
+			if name == 'Point' {
+				children := as_list(obj['children'] or { json2.Any(no_list()) }) or { no_list() }
+				point_children = children.len
+			}
+			if name == 'scale' {
+				scale_line = symbol_line(item, 'selectionRange')
+			}
+		}
+		runner.record('the outline names what the buffer declares', 'Point' in names
+			&& 'main' in names && 'scale' in names, names.str())
+		runner.record('a struct carries its fields as children', point_children == 2,
+			'${point_children} children')
+		// the name is what the outline points at, not the attributes above it
+		want_scale_line := line_of(buffer, 'fn scale(')
+		runner.record('a declaration is named where its name is written',
+			scale_line == want_scale_line, '${scale_line}, wanted ${want_scale_line}')
+	}
+
+	// A search reads the index, which reaches files nobody has opened, so this
+	// answer proves the folders the client named were indexed and that the answer
+	// names the file by the uri the client knows it by.
+	search := '{"jsonrpc":"2.0","id":12,"method":"workspace/symbol","params":{"query":"Point"}}'
+	runner.send(search)
+	if reply := runner.expect_reply('a workspace search is answered', 12, wait_for_reply_ms) {
+		runner.record('the search is not an error', !reply.err, reply.etext)
+		mut struct_line := -1
+		for item in as_list(reply.result) or { no_list() } {
+			obj := as_map(item) or { continue }
+			if (obj['name'] or { json2.Any('') }).str() != 'Point' {
+				continue
+			}
+			if location_uri(item) == root_uri {
+				struct_line = location_line(item)
+			}
+		}
+		want_struct_line := line_of(buffer, 'struct Point {')
+		runner.record('the search finds the fixture struct where it is declared',
+			struct_line == want_struct_line, '${struct_line}, wanted ${want_struct_line}')
+	}
+
+	// `scaled := scale(base, 4)` is read once, so a rename of it is two edits in
+	// one file: the declaration and the read. The position is computed from the
+	// buffer rather than written down.
+	local_line := line_of(buffer, 'scaled := scale')
+	local_column := column_of(buffer, local_line, 'scaled')
+	prepare := '{"jsonrpc":"2.0","id":13,"method":"textDocument/prepareRename","params":' +
+		'{"textDocument":{"uri":"${root_uri}"},"position":{"line":${local_line},' +
+		'"character":${local_column}}}}'
+	runner.send(prepare)
+	if reply := runner.expect_reply('a rename at a position is answered', 13, wait_for_reply_ms) {
+		runner.record('the prepare answer is not an error', !reply.err, reply.etext)
+		result := as_map(reply.result) or { no_map() }
+		placeholder := (result['placeholder'] or { json2.Any('') }).str()
+		runner.record('the placeholder is the name at the position', placeholder == 'scaled',
+			placeholder)
+		range_ := as_map(result['range'] or { json2.Any(no_map()) }) or { no_map() }
+		start := as_map(range_['start'] or { json2.Any(no_map()) }) or { no_map() }
+		line := (start['line'] or { json2.Any(-1) }).int()
+		character := (start['character'] or { json2.Any(-1) }).int()
+		runner.record('the range a client selects is the name itself',
+			line == local_line && character == local_column,
+			'${line}:${character}, wanted ${local_line}:${local_column}')
+	}
+
+	// The rename answer is the edits and nothing else: the file on disk is
+	// checked below after asking, because a server that wrote it would leave the
+	// fixture changed and every later run would read the new name.
+	rename_request_message := '{"jsonrpc":"2.0","id":14,"method":"textDocument/rename",' +
+		'"params":{"textDocument":{"uri":"${root_uri}"},"position":{"line":${local_line},' +
+		'"character":${local_column}},"newName":"renamed_local"}}'
+	runner.send(rename_request_message)
+	if reply := runner.expect_reply('a rename is answered with edits', 14, wait_for_reply_ms) {
+		runner.record('the rename answer is not an error', !reply.err, reply.etext)
+		result := as_map(reply.result) or { no_map() }
+		changes := as_map(result['changes'] or { json2.Any(no_map()) }) or { no_map() }
+		edits := as_list(changes[root_uri] or { json2.Any(no_list()) }) or { no_list() }
+		runner.record('the plan is two edits in the buffer, one file', changes.len == 1
+			&& edits.len == 2, '${changes.len} files, ${edits.len} edits')
+		mut all_renamed := edits.len > 0
+		for edit in edits {
+			if edit_text(edit) != 'renamed_local' {
+				all_renamed = false
+			}
+		}
+		runner.record('every edit writes the new name', all_renamed, '')
+		mut declaration_line := -1
+		if edits.len > 0 {
+			declaration_line = symbol_line(edits[0], 'range')
+		}
+		runner.record('the first edit is the declaration', declaration_line == local_line,
+			'${declaration_line}, wanted ${local_line}')
+		on_disk := os.read_file(os.join_path(fixture, 'app.v')) or { '' }
+		runner.record("the server wrote nothing: the edits are the client's to apply",
+			on_disk == buffer, 'the fixture on disk changed')
 	}
 
 	// Diagnostics are computed from the client's text, so this pair of requests
