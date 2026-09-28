@@ -82,17 +82,22 @@ compiler on stdin. A client that shows what the server pushes gets the same
 findings as `textDocument/publishDiagnostics` once the typing stops, and a
 `didClose` takes them away again.
 
-Formatting, semantic tokens, inlay hints and diagnostics are the lanes that
-answer today, and each one is advertised only where it can be served: formatting
-when the startup probe found a compiler that rewrites a buffer, tokens when the
-client named token types this server emits, hints when the client offered them
-and a workspace folder was indexed, and diagnostics when the client offered the
-pull and the probe found a compiler that reports a finding for a buffer it
-cannot compile. The providers that have no handlers yet (hover, completion,
-definition and the rest) are left unadvertised so they answer `MethodNotFound`
-instead of something empty, and wiring the engine to them is the work in
-progress. Everything else under Features is the v0.1.0 target rather than
-something you can install today.
+Formatting, semantic tokens, inlay hints, symbols, rename and diagnostics are
+the lanes that answer today, and each one is advertised only where it can be
+served: formatting when the startup probe found a compiler that rewrites a
+buffer, tokens when the client named token types this server emits, hints when
+the client offered them and a workspace folder was indexed, symbols and rename
+when the client offered them, and diagnostics when the client offered the pull
+and the probe found a compiler that reports a finding for a buffer it cannot
+compile. An outline comes from the buffer's own parse, so it needs no index
+and answers for a file outside every indexed folder; a search reads the index
+and so covers files nobody has opened; a rename is planned against the parses
+and answered as edits the client applies, and the server writes no file. The
+providers that have no handlers yet (hover, completion, definition and the
+rest) are left unadvertised so they answer `MethodNotFound` instead of
+something empty, and wiring the engine to them is the work in progress.
+Everything else under Features is the v0.1.0 target rather than something you
+can install today.
 
 ## Features, targeted for v0.1.0
 
@@ -101,8 +106,8 @@ something you can install today.
 | Diagnostics | pushed and pulled, including over unsaved buffers | in the tree |
 | Hover and completion | hover, completion, signature help | N/A |
 | Navigation | definition, declaration, type definition, implementation, references | N/A |
-| Rename | rename and prepare rename | N/A |
-| Symbols | document symbols and workspace symbols | N/A |
+| Rename | rename and prepare rename, planned from the parse the buffer has and answered as edits the client applies | in the tree |
+| Symbols | document symbols from the buffer's own parse, workspace symbols from the index | in the tree |
 | Selection and view | folding ranges, document highlight, selection range, range formatting | N/A |
 | Semantic tokens | declarations, types, literals, comments, attribute names, keywords and operators, read from the parse tree | in the tree |
 | Inlay hints | parameter names at call sites, field names in a positional struct literal, the type a `:=` infers, the code a `defer` places, and the attributes a function or a module carries, answered from the workspace index | in the tree |

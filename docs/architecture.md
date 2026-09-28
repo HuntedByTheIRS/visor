@@ -36,8 +36,8 @@ being built toward, and the state column below says which modules have landed.
 | --- | --- | --- | --- |
 | `vtool/` | in the tree | V binary discovery, the version and capability probe, `-check` over stdin, `fmt -` | nothing |
 | `engine/` | in the tree | tree-sitter V to PSI to index, ported from v-analyzer | its own submodules and the vendored bindings |
-| `features/` | in the tree | the typed answers the handlers send: the whole-buffer `v fmt` edit, the token walk over the parse tree, and the inlay hint walk over an open buffer and the workspace index | `engine/`, `vtool/` |
-| `lsp/` | in the tree | the wire: framing, capabilities, routing, sync, cancellation, progress, shutdown, and the diagnostics and inlay hint lanes | `features/` for the answers, `diag/` for the checks, plus `io`, `json2`, `os` and `vtool` |
+| `features/` | in the tree | the typed answers the handlers send: the whole-buffer `v fmt` edit, the token walk over the parse tree, the inlay hint walk over an open buffer and the workspace index, the outline of a buffer's own parse, the workspace search over the index, and the rename plan | `engine/`, `vtool/` |
+| `lsp/` | in the tree | the wire: framing, capabilities, routing, sync, cancellation, progress, shutdown, and the diagnostics, inlay hint, symbol and rename lanes | `features/` for the answers, `diag/` for the checks, plus `io`, `json2`, `os` and `vtool` |
 | `diag/` | in the tree | debounce per document, one check in flight per module root, the last report per buffer | `vtool/` |
 | `main.v` | in the tree | the entry point and the stdio loop | `lsp/` |
 | `plugins/nvim/` | in the tree | the Neovim client: server search and attach | nothing, it speaks the protocol |
@@ -145,3 +145,44 @@ that, and the names of the attributes a function or a module carries, drawn
 after the declaration they belong to. The wire half is `lsp/inlay_hints.v`. A
 request the index cannot answer is refused in words, because an empty list
 reads to a client as a buffer with nothing worth saying in it.
+
+## Symbols and rename, and the two places they read
+
+An outline and a search answer one question from two different places, and the
+difference is the shape of each lane. `features/symbols.v` walks a buffer's
+own parse, so the outline names what the file in front of the person declares,
+including a file outside every indexed folder and a buffer nobody has saved.
+`features/workspace_symbols.v` reads the stub index instead, so a search
+reaches files nobody has opened, and describes those files as the disk has
+them. Both answer a query with the closest names first: an exact name, then a
+name that starts with the query, then one that contains it, then one whose
+letters appear in order.
+
+A method hangs under the type its receiver names, and the receiver is read as
+text: the parser reports `fn Greeting.new()` with an empty receiver name and
+the type in the receiver's own text, so the name of the enclosing type comes
+from there. A method whose type the file does not declare stays where it is
+written, with the receiver spelled out in its detail.
+
+Rename is one resolution and one walk per file. `features/rename.v` resolves
+the position through the parse the session holds, which is what tells two
+same-named locals apart: a reference resolves to a declaration, and a
+candidate is kept only when it resolves to that same one. Reach is read off
+the declaration rather than guessed from the text: a local lives in one file,
+a private name in every file of its module, and a public one also in the files
+of the modules that import it, which is the whole of a public name's reach
+because V has no re-export. The walk is therefore bounded by the index.
+
+Candidates are matched by the place a name is declared rather than by its
+text, because the two elements being compared can come from different parses
+of the same file. An element the index built for a file this process has not
+read carries no text while the same declaration parsed out of the file carries
+all of it, and the kind an element reports is read off the node it was built
+from, which a stub and a parse spell differently. The path and the place
+identify a declaration without either.
+
+The answer is a set of edits and not a write. The client applies them, which
+is what makes one rename one undo in the editor, and it means a refused rename
+left nothing behind to clean up. A proposed name is checked before anything is
+planned, and a module clause or an import is refused in words because
+rewriting either moves nothing.
