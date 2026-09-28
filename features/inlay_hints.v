@@ -25,6 +25,12 @@ module features
 import engine.psi
 import engine.psi.types
 
+// attribute_separator is what sits between two names in an attribute label. A
+// colon would read as part of `@[name: 'value']`, which is the spelling most
+// attributes with an argument use, and the label is a list of names rather than a
+// restatement of the source.
+const attribute_separator = '::'
+
 // HintKind is what a hint says. The numbers are the protocol's own: 1 is a type
 // hint and 2 is a parameter hint, and a client may turn either kind off on its
 // own.
@@ -252,7 +258,7 @@ fn attribute_hints(element psi.PsiElement, text string, mut hints []Hint) {
 	}
 	hints << Hint{
 		offset:        attribute_anchor(element)
-		label:         '    | ${names.join(':')}'
+		label:         '    | ${names.join(attribute_separator)}'
 		kind:          .type_
 		padding_right: true
 		tooltip:       attribute_tooltip(attributes, text)
@@ -278,12 +284,16 @@ fn attribute_nodes(element psi.PsiElement) []psi.PsiElement {
 }
 
 // attribute_names returns what each attribute is called, in the order the source
-// writes them.
+// writes them, in capitals.
 //
 // The name is not always a bare word: `@[deprecated: 'use x']` puts it before the
 // colon, `@[if debug]` is a condition and is shown whole, and a route's
 // `@['/index'; get]` carries a path as well as the methods under it. An
 // attribute with nothing to name contributes nothing.
+//
+// Capitals are for the reader: the label is a restatement of what the line above
+// the declaration already spells, and the case it was written in is not the part
+// worth repeating.
 fn attribute_names(attributes []psi.PsiElement, text string) []string {
 	mut names := []string{cap: attributes.len}
 	for attribute in attributes {
@@ -293,7 +303,7 @@ fn attribute_names(attributes []psi.PsiElement, text string) []string {
 			}
 			name := attribute_name(expression, text)
 			if name != '' {
-				names << name
+				names << name.to_upper()
 			}
 		}
 	}

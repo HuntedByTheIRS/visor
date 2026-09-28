@@ -650,7 +650,7 @@ fn main() {
 			if label == 'x:' {
 				field_line, field_column = hint_position(item)
 			}
-			if label == '    | inline' {
+			if label == '    | INLINE' {
 				attribute_line, attribute_column = hint_position(item)
 			}
 			if label == ': Point' {

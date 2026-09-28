@@ -194,7 +194,7 @@ check('every family reached the screen',
     and labels:find(': Point', 1, true) ~= nil
     and labels:find('p:', 1, true) ~= nil
     and labels:find('n:', 1, true) ~= nil
-    and labels:find('| inline', 1, true) ~= nil
+    and labels:find('| INLINE', 1, true) ~= nil
     and labels:find('defer:', 1, true) ~= nil,
   labels)
 
@@ -209,7 +209,7 @@ check('a call into the standard library gets its parameter name',
 -- opens with, rather than at the end of the line, which is a different place the
 -- moment a line holds anything else.
 local scale_row, scale_line = line_of(bufnr, 'fn scale(')
-local attribute = hint_at(hints, '| inline')
+local attribute = hint_at(hints, '| INLINE')
 local attribute_column = column_of(scale_line or '', '{') + 1
 check('a declaration names the attributes it carries',
   attribute ~= nil and attribute.row == scale_row and attribute.col == attribute_column,

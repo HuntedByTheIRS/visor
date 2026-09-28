@@ -254,7 +254,7 @@ fn test_the_attribute_family_names_the_declarations_it_belongs_to() {
 	assert reply.kind == .response, reply.error_text
 	// the module first, then the function, each named where its declaration ends:
 	// after the module name, and after the brace the body opens with
-	assert hint_labels_of(reply) == ['    | translated', '    | inline']
+	assert hint_labels_of(reply) == ['    | TRANSLATED', '    | INLINE']
 	assert hint_positions_of(reply) == [
 		position_after(attribute_lane_buffer, 'module main'),
 		position_after(attribute_lane_buffer, 'fn add(a int) int {'),
