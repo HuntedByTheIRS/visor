@@ -1,5 +1,6 @@
 module lsp
 
+import engine.psi
 import json2
 
 // Position is an LSP position. Both fields are counted from zero, and character
@@ -268,6 +269,40 @@ pub fn position_for_offset(text string, offset int) Position {
 	return Position{
 		line:      line
 		character: units
+	}
+}
+
+// offset_of_byte_column is the byte a line and a byte column name. The engine
+// counts a column in bytes where the protocol counts it in code units, so a
+// range that arrives from the index goes through here and then through
+// position_for_offset, which is what a client can read.
+//
+// A column past the end of its line clamps to the line's end, and a line past
+// the end of the text clamps to the end of it. An indexed range describes a file
+// this process may not have read, and a file that has moved on since is answered
+// as far as it still reads rather than with a position that cannot exist.
+pub fn offset_of_byte_column(text string, line int, column int) int {
+	mut offset := 0
+	for current := 0; current < line; current++ {
+		advance := text[offset..].index('\n') or { return text.len }
+		offset += advance + 1
+		if offset > text.len {
+			return text.len
+		}
+	}
+	newline := text[offset..].index('\n') or { text.len - offset }
+	reach := if column > newline { newline } else { column }
+	return offset + reach
+}
+
+// range_of_text_range is an engine range as the range a client reads. Both ends
+// go through the text, because the engine's columns are bytes.
+pub fn range_of_text_range(text string, range_ psi.TextRange) Range {
+	start := offset_of_byte_column(text, range_.line, range_.column)
+	stop := offset_of_byte_column(text, range_.end_line, range_.end_column)
+	return Range{
+		start: position_for_offset(text, start)
+		end:   position_for_offset(text, stop)
 	}
 }
 

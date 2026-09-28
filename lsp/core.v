@@ -38,4 +38,7 @@ fn (mut s Server) register_core() {
 	// The outline is the one lane that needs neither the compiler nor the
 	// index: it is a fact about one buffer's parse.
 	s.on('textDocument/documentSymbol', handle_document_symbols)
+	// A search crosses the workspace, so it is the lane that reads the index
+	// and nothing else. Its answer is only as current as the files on disk.
+	s.on('workspace/symbol', handle_workspace_symbols)
 }

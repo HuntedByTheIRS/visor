@@ -208,6 +208,44 @@ pub fn (s &Session) file(path string) ?&psi.PsiFile {
 	return buffer.file
 }
 
+// index_declarations lists every declaration the index holds for the workspace.
+//
+// The index files a declaration under more than one key, so the same one is
+// returned more than once and the caller is what knows whether the repeat
+// matters. A search wants one entry per place a name is declared, and it
+// recognises a repeat by the file the declaration is in and its place there.
+pub fn (s &Session) index_declarations() []psi.PsiElement {
+	return s.manager.stub_index.get_all_elements_from(.workspace)
+}
+
+// module_of is the module a file belongs to, as the index reads it. A file no
+// root has seen has no module, and an empty string says that rather than a guess.
+pub fn (s &Session) module_of(path string) string {
+	return s.manager.stub_index.get_module_qualified_name(path)
+}
+
+// module_files lists the files of one module, which is the set a reference
+// search inside that module has to walk.
+pub fn (s &Session) module_files(module_fqn string) []string {
+	mut files := []string{}
+	for sink in s.manager.stub_index.get_all_sinks_from_module(module_fqn) {
+		files << sink.stub_list.path
+	}
+	return files
+}
+
+// importer_files lists the files of the modules that name this module, which is
+// the other half of a reference search that crosses a module boundary: a
+// declaration a public keyword puts in reach is used from files this one cannot
+// see.
+pub fn (s &Session) importer_files(module_fqn string) []string {
+	mut files := []string{}
+	for sink in s.manager.stub_index.get_all_sink_depends_on(module_fqn) {
+		files << sink.stub_list.path
+	}
+	return files
+}
+
 // owns reports whether an indexed root contains the path.
 pub fn (s &Session) owns(path string) bool {
 	for i in 0 .. s.manager.indexer.roots.len {

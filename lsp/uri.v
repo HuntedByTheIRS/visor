@@ -39,6 +39,56 @@ pub fn path_from_uri(uri string) string {
 	return percent_decoded(rest)
 }
 
+// uri_from_path is the name a client knows a file by. An answer about a file
+// the client never opened has to carry one, and the escape has to be the one
+// path_from_uri decodes, or the same file arrives under two names and the client
+// shows two copies of it.
+//
+// Everything outside the unreserved set is escaped, and `/` is kept because it
+// is a separator rather than text. A Windows drive letter would be escaped like
+// any other colon, which is the one shape this does not answer for, and nothing
+// in this repository builds for Windows yet.
+pub fn uri_from_path(path string) string {
+	if path == '' {
+		return ''
+	}
+	mut out := []u8{cap: path.len + 8}
+	out << 'file://'.bytes()
+	for ch in path.bytes() {
+		if uri_safe(ch) {
+			out << ch
+			continue
+		}
+		out << `%`
+		out << hex_upper(ch >> 4)
+		out << hex_upper(ch & 0x0F)
+	}
+	return out.bytestr()
+}
+
+// uri_safe reports whether a byte stands for itself in a file URI: the
+// unreserved set of RFC 3986, plus the separator.
+fn uri_safe(ch u8) bool {
+	if ch >= `a` && ch <= `z` {
+		return true
+	}
+	if ch >= `A` && ch <= `Z` {
+		return true
+	}
+	if ch >= `0` && ch <= `9` {
+		return true
+	}
+	return ch in [`-`, `.`, `_`, `~`, `/`]
+}
+
+// hex_upper is one hex digit of a byte, the way an escape spells it.
+fn hex_upper(value u8) u8 {
+	if value < 10 {
+		return value + `0`
+	}
+	return value - 10 + `A`
+}
+
 // root_for_path is the module root a compiler run starts in: the workspace
 // folder the file sits under, or its own directory when no folder contains it.
 //
