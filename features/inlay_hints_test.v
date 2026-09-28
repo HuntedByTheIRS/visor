@@ -173,6 +173,34 @@ fn test_a_defer_in_a_nested_block_belongs_to_that_block() {
 	assert labels.filter(it == '; defer: println(2)').len == 1
 }
 
+// The compile-time builtins are the compiler's own: nothing in the index declares
+// `$env` or `$embed_file`, so what they produce is written down in the engine next
+// to its other builtins.
+const compile_time_buffer = "module main
+
+fn main() {
+	x := \$embed_file('main.v').to_string()
+	println(x)
+	y := \$env('HOME')
+	println(y)
+	z := \$res('thing')
+	println(z)
+}
+"
+
+fn test_a_compile_time_builtin_is_labelled_with_what_it_produces() {
+	hints := hints_in(compile_time_buffer, HintOptions{})
+	assert hint_labels(hints) == [': string', ': string']
+}
+
+// A builtin this server has not written down gets no label, the same way a call it
+// cannot resolve does: a guess is worse than a gap.
+fn test_a_compile_time_builtin_this_server_does_not_know_gets_nothing() {
+	hints := hints_in(compile_time_buffer, HintOptions{})
+	assert find_hint(hints, ': []u8') == none
+	assert find_hint(hints, ': void') == none
+}
+
 fn test_a_value_that_spells_its_own_type_is_not_labelled() {
 	hints := hints_in(hint_buffer, HintOptions{})
 	// `base := Point{ 2, 3 }` says Point twice already. `scaled` and `text` do

@@ -51,6 +51,13 @@ pub fn (t &TypeInferer) infer_call_expr_type(element CallExpression) types.Type 
 		return types.new_result_type(element.get_json_decode_type(), false)
 	}
 
+	// The compile-time builtins are the compiler's own: `$env`, `$tmpl` and
+	// `$embed_file` resolve to nothing in the index, so without this a `:=` on one
+	// of them infers nothing and the label that would read `string` is not drawn.
+	if comptime := comptime_call_type(element) {
+		return comptime
+	}
+
 	if resolved := element.resolve() {
 		expr_type := t.infer_type(resolved)
 		if expr_type is types.FunctionType {
