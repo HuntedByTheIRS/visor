@@ -19,6 +19,13 @@ import time
 const wait_for_reply_ms = 3000
 const silence_window_ms = 300
 
+// handshake_reply_ms is the window for the reply to initialize, which is the
+// first thing the server does. That answer waits on the compiler probe and on
+// the workspace the client named, on a machine that may still be busy with the
+// build that produced the binary, so it gets room the later requests do not
+// need: those are answered from state the handshake built.
+const handshake_reply_ms = 15000
+
 // post_open_reply_ms is the window for the first request after a didOpen. That
 // notification is where the buffer's imported modules are indexed, and on a
 // cold machine the server reads no further frame until that finishes. Requests
@@ -560,8 +567,12 @@ fn main() {
 		'"processId":null,"clientInfo":{"name":"lsp_smoke","version":"1"},' +
 		'"capabilities":${client_capabilities},' +
 		'"workspaceFolders":[{"uri":"file://${os.getwd()}","name":"smoke"}]}}')
-	handshake := runner.next(wait_for_reply_ms) or {
-		eprintln('smoke: the server did not answer initialize')
+	handshake := runner.next(handshake_reply_ms) or {
+		if proc.is_alive() {
+			eprintln('smoke: the server is running but did not answer initialize within ${handshake_reply_ms} ms')
+		} else {
+			eprintln('smoke: the server exited with code ${proc.code} before answering initialize')
+		}
 		proc.signal_kill()
 		exit(1)
 	}
@@ -890,7 +901,7 @@ fn main() {
 		out_fd: other_proc.stdio_fd[0]
 	}
 	other.send('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{}}}')
-	other.next(wait_for_reply_ms) or { eprintln('smoke: the second server did not answer') }
+	other.next(handshake_reply_ms) or { eprintln('smoke: the second server did not answer') }
 	other.send('{"jsonrpc":"2.0","method":"initialized","params":{}}')
 	other.send('{"jsonrpc":"2.0","method":"exit"}')
 	other_proc.wait()
@@ -915,7 +926,7 @@ fn main() {
 	push_uri := 'file://${os.getwd()}/testdata/smoke/unsaved.v'
 	pusher.send('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":' +
 		'{"textDocument":{"diagnostic":{},"publishDiagnostics":{}}}}}')
-	pusher.next(wait_for_reply_ms) or { eprintln('smoke: the push server did not answer') }
+	pusher.next(handshake_reply_ms) or { eprintln('smoke: the push server did not answer') }
 	pusher.send('{"jsonrpc":"2.0","method":"initialized","params":{}}')
 	pusher.send(open_notification(push_uri, broken))
 	if pushed := pusher.next(wait_for_reply_ms) {
