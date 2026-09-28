@@ -406,9 +406,45 @@ fn finding_position(item json2.Any) (int, int) {
 	return (start['line'] or { json2.Any(-1) }).int(), (start['character'] or { json2.Any(-1) }).int()
 }
 
+// finding_message reads the text of one finding.
 fn finding_message(item json2.Any) string {
 	obj := as_map(item) or { return '' }
 	return (obj['message'] or { json2.Any('') }).str()
+}
+
+// hint_label reads the label of one inlay hint.
+fn hint_label(item json2.Any) string {
+	obj := as_map(item) or { return '' }
+	return (obj['label'] or { json2.Any('') }).str()
+}
+
+// hint_position reads where one inlay hint was placed. A hint carries a position
+// rather than a range, which is the whole difference from a finding.
+fn hint_position(item json2.Any) (int, int) {
+	obj := as_map(item) or { return -1, -1 }
+	position := as_map(obj['position'] or { json2.Any(no_map()) }) or { return -1, -1 }
+	return (position['line'] or { json2.Any(-1) }).int(), (position['character'] or { json2.Any(-1) }).int()
+}
+
+// line_of finds the first line holding a needle, so an expected position in the
+// checks below does not have to be recounted after the fixture is edited.
+fn line_of(text string, needle string) int {
+	for i, line in text.split_into_lines() {
+		if line.contains(needle) {
+			return i
+		}
+	}
+	return -1
+}
+
+// column_of finds the first column of a needle on a line, or -1 when the line
+// holds no such text.
+fn column_of(text string, line_number int, needle string) int {
+	lines := text.split_into_lines()
+	if line_number < 0 || line_number >= lines.len {
+		return -1
+	}
+	return lines[line_number].index(needle) or { -1 }
 }
 
 fn main() {
@@ -528,6 +564,43 @@ fn main() {
 		runner.record('the first token is the `module` keyword', first_length == 6
 			&& first_type == keyword_index,
 			'length ${first_length}, type ${first_type}, keyword sits at ${keyword_index}')
+	}
+
+	// Inlay hints come from the buffer's parse and the workspace index, so this
+	// request proves across a real pipe that the folders the client named were
+	// indexed and that a label lands on the text the engine said it describes.
+	// The positions are computed from the buffer rather than written down, so
+	// editing the fixture does not silently move the expectation.
+	hints := '{"jsonrpc":"2.0","id":10,"method":"textDocument/inlayHint","params":' +
+		'{"textDocument":{"uri":"${root_uri}"},"range":{"start":{"line":0,"character":0},' +
+		'"end":{"line":1000,"character":0}}}}'
+	runner.send(hints)
+	if reply := runner.expect_reply('inlay hints are answered', 10, wait_for_reply_ms) {
+		runner.record('the hint answer is not an error', !reply.err, reply.etext)
+		items := as_list(reply.result) or { no_list() }
+		mut labels := []string{}
+		mut field_line := -1
+		mut field_column := -1
+		mut type_hint_found := false
+		for item in items {
+			label := hint_label(item)
+			labels << label
+			if label == 'x:' {
+				field_line, field_column = hint_position(item)
+			}
+			if label == ': Point' {
+				type_hint_found = true
+			}
+		}
+		runner.record('the buffer earns a field label and a type label',
+			'x:' in labels && type_hint_found, labels.str())
+		// `base := Point{ 2, 3 }` is where the first value is, and the hint has
+		// to sit on the `2` rather than near it.
+		want_line := line_of(buffer, 'base := Point{')
+		want_column := column_of(buffer, want_line, '2')
+		runner.record('the field hint sits on the value it describes',
+			field_line == want_line && field_column == want_column,
+			'${field_line}:${field_column}, wanted ${want_line}:${want_column}')
 	}
 
 	// Diagnostics are computed from the client's text, so this pair of requests

@@ -9,6 +9,9 @@
         "workspaceDiagnostics": false
       },
       "documentFormattingProvider": true,
+      "inlayHintProvider": {
+        "resolveProvider": false
+      },
       "positionEncoding": "utf-16",
       "semanticTokensProvider": {
         "full": true,

@@ -15,6 +15,9 @@
     "hover": {
       "dynamicRegistration": false
     },
+    "inlayHint": {
+      "dynamicRegistration": false
+    },
     "semanticTokens": {
       "dynamicRegistration": false,
       "requests": {
