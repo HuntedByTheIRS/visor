@@ -146,8 +146,65 @@ fn test_literals_comments_attributes_and_operators_are_typed() {
 	// nothing inside it is walked
 	assert kind_of(sample, tokens, '3.5') == 'no token for 3.5'
 	assert kind_of(sample, tokens, '// Severity ranks a finding.') == 'comment'
-	assert kind_of(sample, tokens, '@[heap]') == 'decorator'
+	// the token says `heap`, which is the name; the brackets and the line they
+	// sit on are structure, and a client with its own highlighting covers them
+	assert kind_of(sample, tokens, 'heap') == 'decorator'
+	assert kind_of(sample, tokens, '@[heap]') == 'no token for @[heap]'
 	assert kind_of(sample, tokens, ':=') == 'operator'
+}
+
+// The attribute spellings, one per node the grammar builds. A name is a token in
+// every one of them.
+const attribute_sample = "module main
+
+@[inline]
+@[deprecated: 'use add']
+@[if debug]
+@['/index'; get; post]
+fn add(a int, b int) int {
+	return a + b
+}
+"
+
+// A call-style attribute is the one spelling the grammar has no node for.
+const call_style_attribute_sample = "module main
+
+@[deprecated('use add')]
+fn add() {}
+"
+
+// An attribute written above the module line belongs to the module rather than
+// to the declaration under it.
+const module_attribute_sample = '@[translated]
+module main
+'
+
+fn test_an_attribute_name_is_what_carries_the_token() {
+	tokens := tokens_of(attribute_sample)
+	assert kind_of(attribute_sample, tokens, 'inline') == 'decorator'
+	// `name: value` puts the name first and types the value as the literal it is
+	assert kind_of(attribute_sample, tokens, 'deprecated') == 'decorator'
+	assert kind_of(attribute_sample, tokens, "'use add'") == 'string'
+	// a conditional attribute is one name, not a keyword with a name under it
+	assert kind_of(attribute_sample, tokens, 'if debug') == 'decorator'
+	// a route is a path and the methods under it: the path stays a string and
+	// each method is a name
+	assert kind_of(attribute_sample, tokens, "'/index'") == 'string'
+	assert kind_of(attribute_sample, tokens, 'get') == 'decorator'
+	assert kind_of(attribute_sample, tokens, 'post') == 'decorator'
+}
+
+fn test_a_call_style_attribute_names_itself() {
+	tokens := tokens_of(call_style_attribute_sample)
+	// The grammar leaves `@[deprecated` in an error node and the argument list
+	// behind it as a statement of its own. The name is still read out.
+	assert kind_of(call_style_attribute_sample, tokens, 'deprecated') == 'decorator'
+	assert kind_of(call_style_attribute_sample, tokens, "'use add'") == 'string'
+}
+
+fn test_an_attribute_on_the_module_line_is_typed() {
+	tokens := tokens_of(module_attribute_sample)
+	assert kind_of(module_attribute_sample, tokens, 'translated') == 'decorator'
 }
 
 fn test_a_const_is_read_only() {

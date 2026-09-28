@@ -1,7 +1,7 @@
 // semantic tokens: what the parse tree says a piece of text is.
 //
 // The walk is syntactic. It types the things a grammar can name on its own:
-// declarations, the types they mention, literals, comments, attributes,
+// declarations, the types they mention, literals, comments, attribute names,
 // keywords and operators. What it does not type is a reference, because telling
 // a call to a function from a field of the same name needs the index rather than
 // the tree, and claiming one would be a guess dressed as an answer. A client
@@ -61,10 +61,23 @@ const span_kinds = {
 	'rune_literal':               'string'
 	'int_literal':                'number'
 	'float_literal':              'number'
-	'attribute':                  'decorator'
 	'type_reference_expression':  'type'
 	'qualified_type':             'type'
 	'field_name':                 'property'
+}
+
+// attribute_kinds are the nodes that hold an attribute's name. Only the name is
+// typed: the `@[` and `]` around it are structure, and a value is whatever the
+// ordinary rules make of it, so `@['/'; get]` leaves the path a string and types
+// the two names beside it.
+//
+// `value_attribute` is a bare name and it is also the name half of a
+// `key_value_attribute`, so one entry covers `@[inline]` and `@[sql: 'SELECT 1']`
+// alike. An `if_attribute` is handed over whole, because `@[if debug]` is one
+// attribute rather than a keyword with a name under it.
+const attribute_kinds = {
+	'value_attribute': 'decorator'
+	'if_attribute':    'decorator'
 }
 
 // declaration_kinds are the nodes that declare a name, and what that name is.
@@ -218,6 +231,24 @@ fn collect(node engine.Node, text string, mut out []SemanticToken) {
 		emit(mut out, node, kind, [])
 		return
 	}
+	if kind := attribute_kinds[node.kind] {
+		emit(mut out, node, kind, [])
+		return
+	}
+	if node.kind == 'ERROR' {
+		// A call-style attribute has no node of its own. `@[deprecated('use x')]`
+		// arrives as an ERROR holding `@[` and the name, with the argument list
+		// and the closing bracket behind it as statements of their own. The docs
+		// spell that form and the compiler reads it, so the name is read out of
+		// the rejected node rather than left as the one attribute a reader
+		// cannot tell from a mistake.
+		//
+		// The walk carries on into the node: what else an error holds is other
+		// broken code, and skipping it would take the tokens under it with it.
+		if name := error_attribute_name(node, text) {
+			emit(mut out, name, 'decorator', [])
+		}
+	}
 	if node.kind == 'identifier' && text[node.start_byte..node.end_byte].starts_with('$') {
 		// A name that begins with a `$` is one of the compiler's own: `$env`,
 		// `$embed_file`, `$tmpl`, `$compile_error`. That is what the `$` means in
@@ -276,6 +307,25 @@ fn emit(mut out []SemanticToken, node engine.Node, kind string, modifiers []stri
 		kind:       kind
 		modifiers:  modifiers
 	}
+}
+
+// error_attribute_name is the name of an attribute the grammar refused to build
+// a node for, or none when the error is something else.
+//
+// Only the shape a call-style attribute leaves is recognised: an error opening
+// with `@[` and carrying the name under it. Any other error is some other
+// mistake, and reading a name out of it would claim a token the text does not
+// support.
+fn error_attribute_name(node engine.Node, text string) ?engine.Node {
+	if !text[node.start_byte..node.end_byte].starts_with('@[') {
+		return none
+	}
+	for child in node.children {
+		if child.kind == 'reference_expression' {
+			return child
+		}
+	}
+	return none
 }
 
 // selector_call_field is the name a call goes through when it goes through a
