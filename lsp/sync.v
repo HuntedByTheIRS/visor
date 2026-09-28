@@ -171,6 +171,15 @@ fn handle_did_change_workspace_folders(mut s Server, req Message) Reply {
 			s.workspace_folders = kept
 		}
 	}
+	// A folder added mid-session has no index behind it, and every answer about
+	// a file in it would be refused for a reason the person cannot see. Walk the
+	// list again; the folders already indexed cost nothing here.
+	//
+	// A folder taken away keeps its stubs, because the engine has no way to drop
+	// one root. What that costs is an answer about a file that is no longer open,
+	// which is smaller than the alternative: dropping the whole index and paying
+	// for it again on the next keystroke.
+	s.index_workspace()
 	return ok(null_value())
 }
 

@@ -89,6 +89,12 @@ fn (mut s Server) index_workspace() {
 	if indexed > 0 {
 		s.negotiation_notes << 'index: ${indexed} folder(s) in ${session.index_ms} ms'
 	}
+	// A buffer that was open before its folder arrived has no stubs in the
+	// index: the session refused it when the text came in. Handing every open
+	// buffer over again is what makes the folder's arrival visible in it.
+	for uri in s.documents.uris() {
+		s.feed_session(uri)
+	}
 }
 
 // handle_shutdown stops accepting work. The process stays alive until exit, so

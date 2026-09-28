@@ -229,3 +229,65 @@ fn test_a_hint_carries_a_position_a_client_can_place() {
 	// the defer label is drawn at the closing brace of main, which is line 7
 	assert positions.last().line == 7
 }
+
+// The function this buffer calls is declared in the buffer itself and is on no
+// disk, so the parameter names below are a question only the buffer's own stubs
+// can answer. The struct it returns comes from the file next to it, so the field
+// hints need the folder's index too.
+const added_buffer = 'module main
+
+fn offset(base int, extra int) Point {
+	return Point{ base + extra, extra }
+}
+
+fn main() {
+	result := offset(3, 4)
+	println(result)
+}
+'
+
+// Every label this buffer earns, in the order the lane sends them: the two
+// fields of the return literal, then the type the call infers, then the two
+// parameter names.
+const added_labels = ['x:', 'y:', ': Point', 'base:', 'extra:']
+
+// add_workspace_folder sends the notification a client sends when the person
+// opens another folder in the same window.
+fn add_workspace_folder(mut s Server, dir string) {
+	mut folder := map[string]json2.Any{}
+	folder['uri'] = json2.Any('file://${dir}')
+	folder['name'] = json2.Any('scratch')
+	mut event := map[string]json2.Any{}
+	event['added'] = json2.Any([json2.Any(folder)])
+	mut params := map[string]json2.Any{}
+	params['event'] = json2.Any(event)
+	mut message := map[string]json2.Any{}
+	message['jsonrpc'] = json2.Any(jsonrpc_version)
+	message['method'] = json2.Any('workspace/didChangeWorkspaceFolders')
+	message['params'] = json2.Any(params)
+	s.serve_message(parse_message(json2.encode(json2.Any(message))))
+}
+
+// A folder can turn up after the handshake, and a client that adds one expects
+// the answers it would have got by opening the project first. Both halves of
+// that have to happen for any label here to come back: the folder handler walks
+// the folders again, and the buffer that was open with no root behind it is
+// handed over a second time.
+fn test_a_folder_added_later_answers_for_the_buffers_already_open() {
+	dir := hint_project('added')
+	mut sink := &BufferSink{}
+	mut s := new_server(sink)
+	s.set_version('0.0.1')
+	s.serve_message(parse_message(initialize_request(hint_client, []json2.Any{})))
+	s.serve_message(parse_message('{"jsonrpc":"2.0","method":"initialized","params":{}}'))
+	open_hint_buffer(mut s, 'file://${dir}/main.v', added_buffer)
+	// With no folder indexed the buffer is refused in words, not answered with
+	// an empty list.
+	ask_for_hints(mut s, 'file://${dir}/main.v', none)
+	assert sink.last_message().error_code == code_request_failed
+	add_workspace_folder(mut s, dir)
+	ask_for_hints(mut s, 'file://${dir}/main.v', none)
+	reply := sink.last_message()
+	assert reply.kind == .response, reply.error_text
+	assert hint_labels_of(reply) == added_labels
+}
