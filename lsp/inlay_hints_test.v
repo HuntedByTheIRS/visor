@@ -34,7 +34,7 @@ fn main() {
 '
 
 // Every label this buffer earns, in the order the lane sends them.
-const lane_labels = ['x:', 'y:', ': Point', 'p:', 'factor:', 'defer: println(scaled)']
+const lane_labels = ['x:', 'y:', ': Point', 'p:', 'factor:', '; defer: println(scaled)']
 
 // hint_project writes the file the buffer calls into and returns the directory.
 // No main.v is written: that is what makes the disk read a test of its own. The
@@ -245,8 +245,9 @@ fn entry_flag(entry map[string]json2.Any, name string) bool {
 }
 
 // A label is drawn against the text around it, so the padding it asks for is the
-// difference between `factor: 4` and `factor4`, and between
-// `os.execute('x')defer: y` and a label that reads as its own word.
+// difference between `factor: 4` and `factor4`. The defer label, the one that
+// follows code on its line, opens with its own separator instead:
+// `os.execute('x'); defer: y`.
 fn test_the_labels_ask_for_the_spacing_they_need() {
 	dir := hint_project('spacing')
 	mut sink, mut s := hint_session(dir, 'main.v', lane_buffer)
@@ -263,10 +264,11 @@ fn test_the_labels_ask_for_the_spacing_they_need() {
 			padded_right++
 		}
 	}
-	// the four labels that sit in front of something, and the one that follows
-	// the last statement of the block
+	// the labels that sit in front of something, and the one that follows the
+	// last statement of the block, which separates itself with a semicolon rather
+	// than asking for a space.
 	assert padded_right == 4
-	assert padded_left == 1
+	assert padded_left == 0
 }
 
 // The function this buffer calls is declared in the buffer itself and is on no

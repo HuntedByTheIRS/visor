@@ -82,7 +82,7 @@ fn test_hints_name_the_arguments_and_the_fields() {
 	// at the end of its name, so it comes before the arguments of the call that
 	// name is being assigned from.
 	assert hint_labels(hints) == ['x:', 'y:', ': Point', 'p:', 'factor:', ': string', 'n:',
-		'defer: println(text)']
+		'; defer: println(text)']
 	for hint in hints {
 		if hint.label in ['x:', 'y:', 'p:', 'factor:', 'n:'] {
 			assert hint.kind == .parameter
@@ -109,7 +109,7 @@ fn test_a_hint_lands_on_the_text_it_describes() {
 
 fn test_a_defer_hint_sits_where_the_code_runs() {
 	hints := hints_in(hint_buffer, HintOptions{})
-	defer_hint := find_hint(hints, 'defer: println(text)') or { panic('no defer hint') }
+	defer_hint := find_hint(hints, '; defer: println(text)') or { panic('no defer hint') }
 
 	// The anchor is the end of the last line of the body, which is the line above
 	// the closing brace. A label on the brace lands after the brace, in front of
@@ -144,7 +144,7 @@ fn main() {
 // code is what sits under the braces.
 fn test_a_defer_block_shows_the_code_under_its_braces() {
 	hints := hints_in(block_defer_buffer, HintOptions{})
-	defer_hint := find_hint(hints, 'defer: text := label(4) println(text)') or {
+	defer_hint := find_hint(hints, '; defer: text := label(4) println(text)') or {
 		mut labels := []string{}
 		for hint in hints {
 			labels << hint.label
@@ -152,9 +152,10 @@ fn test_a_defer_block_shows_the_code_under_its_braces() {
 		panic('no block defer hint, got ${labels}')
 	}
 	assert defer_hint.tooltip == 'text := label(4)\nprintln(text)'
-	// The label follows code on the line it is drawn on, so the client is asked
-	// for a space in front of it.
-	assert defer_hint.padding_left
+	// The label follows the last statement of the block, so it opens with a
+	// semicolon: without it the label reads as one more argument to whatever the
+	// line ends with.
+	assert defer_hint.label.starts_with('; defer: ')
 }
 
 // A defer written in a nested block runs at the end of that block, and it is
@@ -166,10 +167,10 @@ fn test_a_defer_in_a_nested_block_belongs_to_that_block() {
 	for hint in hints {
 		labels << hint.label
 	}
-	assert 'defer: println(1)' in labels
-	assert 'defer: println(2)' in labels
-	assert labels.filter(it == 'defer: println(1)').len == 1
-	assert labels.filter(it == 'defer: println(2)').len == 1
+	assert '; defer: println(1)' in labels
+	assert '; defer: println(2)' in labels
+	assert labels.filter(it == '; defer: println(1)').len == 1
+	assert labels.filter(it == '; defer: println(2)').len == 1
 }
 
 fn test_a_value_that_spells_its_own_type_is_not_labelled() {
@@ -203,7 +204,7 @@ fn test_each_family_is_turned_off_by_asking() {
 	without_defers := hints_in(hint_buffer, HintOptions{
 		defers: false
 	})
-	assert find_hint(without_defers, 'defer: println(text)') == none
+	assert find_hint(without_defers, '; defer: println(text)') == none
 
 	without_parameters := hints_in(hint_buffer, HintOptions{
 		parameters: false

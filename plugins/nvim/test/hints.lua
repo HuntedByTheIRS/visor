@@ -229,11 +229,11 @@ for row = line_of(bufnr, 'defer println(scaled)') + 1, 30 do
     break
   end
 end
-local deferred = hint_at(hints, 'defer: println(scaled)')
+local deferred = hint_at(hints, '; defer: println(scaled)')
 check('the deferred code is spelled out above the brace it runs at',
   deferred ~= nil and deferred.row == closing_row - 1 and deferred.row > -1,
   deferred and string.format('row %d, wanted row %d', deferred.row, closing_row - 1)
-    or string.format('no defer: hint, %s', labels))
+    or string.format('no ; defer: hint, %s', labels))
 
 visor.stop()
 

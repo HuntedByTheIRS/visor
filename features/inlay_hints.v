@@ -6,6 +6,11 @@
 // parse counts in bytes and the protocol counts in UTF-16 code units, so the
 // conversion belongs to the caller that has the text.
 //
+// One label is not a statement of its own: a defer runs at the end of its block,
+// so its label sits after the last statement of that block, opening with a
+// semicolon so it reads as the line's continuation rather than as another
+// argument to the call in front of it.
+//
 // A hint is only ever emitted for something the engine resolved. An argument
 // whose callee could not be found gets no label rather than a guessed one, and
 // that is the whole difference between this lane and a grep for `(`.
@@ -33,10 +38,6 @@ pub:
 	// follows it, which is what keeps `factor:` from reading as part of the
 	// argument.
 	padding_right bool
-	// padding left asks for a space before the label. A label that follows code
-	// on the line it is drawn on needs it, or it reads as the rest of that code:
-	// `os.execute('echo hi')defer: x.contains('hi')`.
-	padding_left bool
 	// tooltip is empty when the label is everything the hint knows. It carries
 	// where an answer came from when that is somewhere the reader cannot see,
 	// such as the parameter list of a function in another file.
@@ -250,11 +251,10 @@ fn defer_hints(block psi.PsiElement, text string, mut hints []Hint) {
 		shortened << shorten(codes[i])
 	}
 	hints << Hint{
-		offset:       defer_anchor(text, element_end(block))
-		label:        'defer: ${shortened.join('; ')}'
-		kind:         .type_
-		padding_left: true
-		tooltip:      codes.join('\n')
+		offset:  defer_anchor(text, element_end(block))
+		label:   '; defer: ${shortened.join('; ')}'
+		kind:    .type_
+		tooltip: codes.join('\n')
 	}
 }
 
