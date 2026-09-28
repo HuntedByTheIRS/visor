@@ -174,6 +174,15 @@ if vim.lsp.inlay_hint.is_enabled then
     vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr }))
 end
 
+wait_for('the server answers with hints', function()
+  return #vim.lsp.inlay_hint.get({ bufnr = bufnr }) > 0
+end)
+
+-- Neovim 0.11 turns that answer into marks when the buffer is drawn, and a
+-- headless editor draws when it is asked to. 0.12 draws as the answer lands, so
+-- the redraw is a no-op there.
+vim.cmd('redraw')
+
 wait_for('the editor draws hints in the buffer', function()
   return #drawn_hints(bufnr) > 0
 end)
