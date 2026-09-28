@@ -37,6 +37,43 @@ fn (s &Server) start() {
 	println(greeter.greeting())
 }'
 
+// The compile-time constructs belong to the compiler rather than to a module, so
+// they carry their own `$` and there is nothing in the index for them to point at.
+const compile_time_sample = "module main
+
+fn main() {
+	x := \$embed_file('main.v').to_string()
+	println(\$env('HOME'))
+	\$if linux {
+		println('linux')
+	}
+	y := x.trim_space()
+	println(os.args)
+}
+"
+
+fn test_a_compile_time_name_is_a_keyword() {
+	tokens := tokens_of(compile_time_sample)
+	assert kind_of(compile_time_sample, tokens, '$embed_file') == 'keyword'
+	assert kind_of(compile_time_sample, tokens, '$env') == 'keyword'
+	assert kind_of(compile_time_sample, tokens, '$if') == 'keyword'
+}
+
+// The receiver is an expression, and V has no function values to call through
+// one, so the name the call goes through is a method.
+fn test_a_call_on_an_expression_names_its_method() {
+	tokens := tokens_of(compile_time_sample)
+	assert kind_of(compile_time_sample, tokens, 'to_string') == 'method'
+}
+
+// A call reached through a plain name is left to the client's own highlighting:
+// telling the `os` module from a variable named `os` needs the index, which this
+// walk does not have.
+fn test_a_call_through_a_name_is_not_typed() {
+	tokens := tokens_of(compile_time_sample)
+	assert kind_of(compile_time_sample, tokens, 'trim_space') == 'no token for trim_space'
+}
+
 fn tokens_of(source string) []SemanticToken {
 	return tokens_for(source, 'sample.v')
 }

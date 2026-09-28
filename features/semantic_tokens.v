@@ -92,6 +92,10 @@ const declaration_kinds = {
 
 // keywords are spelled out because the grammar hands them back as unknown
 // nodes. The text is the only thing that says which one it is.
+//
+// The `$` ones are the compile-time constructs. `$if`, `$else` and `$for` arrive
+// as unknown nodes like the rest, while the compile-time builtins arrive as
+// identifiers whose name carries the `$`, which is the rule in `collect`.
 const keywords = [
 	'as',
 	'asm',
@@ -134,6 +138,9 @@ const keywords = [
 	'union',
 	'unsafe',
 	'volatile',
+	'$else',
+	'$for',
+	'$if',
 ]!
 
 // operators are the ones worth colouring. Punctuation is left out on purpose:
@@ -211,6 +218,13 @@ fn collect(node engine.Node, text string, mut out []SemanticToken) {
 		emit(mut out, node, kind, [])
 		return
 	}
+	if node.kind == 'identifier' && text[node.start_byte..node.end_byte].starts_with('$') {
+		// A name that begins with a `$` is one of the compiler's own: `$env`,
+		// `$embed_file`, `$tmpl`, `$compile_error`. That is what the `$` means in
+		// V and why there is no declaration to look up.
+		emit(mut out, node, 'keyword', [])
+		return
+	}
 	if node.kind == 'unknown' {
 		// The grammar reports keywords and operators as unnamed nodes, so the
 		// text is what identifies them. Everything else here is punctuation or
@@ -229,6 +243,16 @@ fn collect(node engine.Node, text string, mut out []SemanticToken) {
 		kind := if has_child(node, 'receiver') { 'method' } else { 'function' }
 		for name in declared_names(node) {
 			emit(mut out, name, kind, [modifier_declaration])
+		}
+	} else if node.kind == 'call_expression' {
+		// `$embed_file('main.v').to_string()` is a method: the receiver is an
+		// expression, and V has no function values to call through one. A call
+		// reached through a plain name, `os.read_file(...)` or `x.trim_space()`,
+		// is left to the client's own highlighting, because telling a module
+		// function from a method on a variable needs the index rather than the
+		// tree.
+		if field := selector_call_field(node) {
+			emit(mut out, field, 'method', [])
 		}
 	} else if kind := declaration_kinds[node.kind] {
 		modifiers := if kind == 'variable' && node.kind == 'const_definition' {
@@ -252,6 +276,30 @@ fn emit(mut out []SemanticToken, node engine.Node, kind string, modifiers []stri
 		kind:       kind
 		modifiers:  modifiers
 	}
+}
+
+// selector_call_field is the name a call goes through when it goes through a
+// selector and the thing it is called on is not a plain name.
+fn selector_call_field(call engine.Node) ?engine.Node {
+	mut selector := engine.Node{}
+	for child in call.children {
+		if child.kind == 'selector_expression' {
+			selector = child
+			break
+		}
+	}
+	if selector.children.len < 2 {
+		return none
+	}
+	if selector.children[0].kind == 'reference_expression' {
+		return none
+	}
+	// The selector holds the receiver, the dot, and then the name.
+	field := selector.children[selector.children.len - 1]
+	if field.kind == 'reference_expression' {
+		return field
+	}
+	return none
 }
 
 fn has_child(node engine.Node, kind string) bool {
