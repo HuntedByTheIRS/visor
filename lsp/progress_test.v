@@ -24,7 +24,10 @@ fn progress_value(m Message) map[string]json2.Any {
 
 fn test_begin_asks_the_client_to_create_the_token_first() {
 	sink, mut s := progress_server(progress_client)
-	assert s.progress_begin('indexing', 'Indexing the module')
+	// The call is written outside the assert: a -prod build drops every assert
+	// statement, so a call left inside one never runs.
+	begun := s.progress_begin('indexing', 'Indexing the module')
+	assert begun
 	assert sink.messages.len == 1
 	request := sink.last_message()
 	assert request.kind == .request
@@ -61,18 +64,21 @@ fn test_reports_and_the_end_go_out_for_an_open_token() {
 	sink, mut s := progress_server(progress_client)
 	s.progress_begin('indexing', 'Indexing')
 	s.serve_message(parse_message(encode_result(sink.last_message().id, null_value())))
-	assert s.progress_report('indexing', 'half way', 50)
+	reported := s.progress_report('indexing', 'half way', 50)
+	assert reported
 	value := progress_value(sink.last_message())
 	assert (value['kind'] or { panic('no kind') }).str() == 'report'
 	assert (value['message'] or { panic('no message') }).str() == 'half way'
 	assert (value['percentage'] or { panic('no percentage') }).int() == 50
-	assert s.progress_end('indexing', 'done')
+	ended := s.progress_end('indexing', 'done')
+	assert ended
 	last := progress_value(sink.last_message())
 	assert (last['kind'] or { panic('no kind') }).str() == 'end'
 	assert !s.progress_open('indexing')
 	assert s.progress.ended == 1
 	// a report after the end is a no-op, not a second begin.
-	assert !s.progress_report('indexing', 'more', 60)
+	after_the_end := s.progress_report('indexing', 'more', 60)
+	assert !after_the_end
 }
 
 fn test_a_report_without_a_percentage_leaves_the_field_out() {
@@ -86,7 +92,8 @@ fn test_a_report_without_a_percentage_leaves_the_field_out() {
 
 fn test_a_client_that_did_not_advertise_progress_gets_no_traffic() {
 	sink, mut s := progress_server(quiet_client)
-	assert !s.progress_begin('indexing', 'Indexing')
+	started := s.progress_begin('indexing', 'Indexing')
+	assert !started
 	assert sink.messages.len == 0
 	assert !s.progress_open('indexing')
 }
@@ -98,7 +105,8 @@ fn test_a_token_the_client_declines_is_never_reported_on() {
 	s.serve_message(parse_message(encode_error(id, code_request_failed, 'no progress here')))
 	assert s.progress.declined == 1
 	assert !s.progress_open('indexing')
-	assert !s.progress_report('indexing', 'anything', 10)
+	reported := s.progress_report('indexing', 'anything', 10)
+	assert !reported
 	// the only message in the sink is the create request: no report went out for
 	// a token the client refused.
 	assert sink.messages.len == 1
