@@ -82,6 +82,22 @@ jobs:
       - name: Warnings gate
         run: v run tools/check_warnings.vsh
 
+      # The production build is a second code path rather than a second name for
+      # the first: -prod turns every warning into an error and drops every
+      # `assert` statement. It sits behind the gate so a warning fails the job
+      # before this compiles the tree a second time.
+      #
+      # The version is an embedded file, and a production build is the one that
+      # carries the bytes instead of reading VERSION at run time, so the probe
+      # runs away from the checkout, where the file cannot answer for it. The
+      # smoke test then drives the binary a release would ship over the wire,
+      # which a compile on its own does not show.
+      - name: Production build
+        run: |
+          v -prod -o /tmp/visor-prod .
+          (cd /tmp && /tmp/visor-prod --version)
+          v run tools/lsp_smoke.vsh --bin /tmp/visor-prod --fixture testdata/smoke
+
       - name: Version probe
         run: /tmp/visor --version
 
