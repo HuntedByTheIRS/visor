@@ -140,43 +140,63 @@ pub fn document_symbols(file &psi.PsiFile) []DocSymbol {
 // The receiver is read out of the text rather than inferred: `Point`, `&Point`,
 // `mut Point` and `Point[T]` are four spellings of the same type, and the name
 // in the declaration is the part they agree on.
+//
+// A static method counts as a member for the same reason: `fn Greeting.new()`
+// is declared on Greeting and called through it, whichever way the receiver is
+// written.
 fn attach_methods(root psi.PsiElement, text string, symbols []DocSymbol, containers map[string]int) []DocSymbol {
 	mut result := symbols.clone()
 	for child in root.children() {
+		wide := child
 		if child is psi.FunctionOrMethodDeclaration {
-			if !child.is_method() {
-				continue
+			if child.is_method() {
+				hang_member(mut result, containers, wide, method_receiver_name(child), text)
 			}
-			declaration := child
-			receiver := receiver_type_name(declaration)
-			mut symbol := named_symbol(declaration, .method, text) or { continue }
-			if receiver != '' {
-				if index := containers[receiver] {
-					container := result[index]
-					mut members := container.children.clone()
-					members << symbol
-					result[index] = with_members(container, members)
-					continue
-				}
-				// the receiver's type is declared somewhere this file cannot
-				// see, so the method is named with it instead of being dropped.
-				symbol = DocSymbol{
-					...symbol
-					detail: '(${receiver}) ${symbol.detail}'
-				}
-			}
-			result << symbol
+			continue
+		}
+		if child is psi.StaticMethodDeclaration {
+			hang_member(mut result, containers, wide, static_method_receiver_name(child), text)
 		}
 	}
 	return result
 }
 
+// hang_member puts one member under its type, or at the top level when the type
+// is declared somewhere this file cannot see. A member named with its receiver
+// says more than a member with no home, so it is kept either way.
+fn hang_member(mut result []DocSymbol, containers map[string]int, element psi.PsiElement, receiver string, text string) {
+	mut symbol := named_symbol(element, .method, text) or { return }
+	if receiver != '' {
+		if index := containers[receiver] {
+			container := result[index]
+			mut members := container.children.clone()
+			members << symbol
+			result[index] = with_members(container, members)
+			return
+		}
+		symbol = DocSymbol{
+			...symbol
+			detail: '(${receiver}) ${symbol.detail}'
+		}
+	}
+	result << symbol
+}
+
 // receiver_type_name is the name of the type a method is declared on, without
 // the reference marker or the type parameters around it.
-fn receiver_type_name(declaration psi.FunctionOrMethodDeclaration) string {
+fn method_receiver_name(declaration psi.FunctionOrMethodDeclaration) string {
 	receiver := declaration.receiver() or { return '' }
 	element := receiver.type_element() or { return '' }
 	return bare_type_name(element.get_text())
+}
+
+// static_method_receiver_name is the type a `fn Type.name()` method is declared
+// on. The receiver of a static method is written as the type itself, and its
+// text is what says so: the receiver's own name() is empty for this shape,
+// because the node it holds is a reference rather than an identifier.
+fn static_method_receiver_name(declaration psi.StaticMethodDeclaration) string {
+	receiver := declaration.receiver() or { return '' }
+	return bare_type_name(receiver.get_text())
 }
 
 // bare_type_name strips what a receiver can wrap a type name in: `&Point` is

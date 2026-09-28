@@ -89,15 +89,15 @@ fn handle_did_save(mut s Server, req Message) Reply {
 //
 // It runs on every edit, and it is the price of the index describing the text in
 // front of the person rather than the last save: the buffer is reparsed and the
-// workspace index is rebuilt from it. A client that never advertised inlay hints
-// is not fed at all, because the index has no other reader today and paying for
-// it per keystroke would be paying for nothing.
+// workspace index is rebuilt from it. A client that never advertised a lane that
+// reads a buffer is not fed at all, because paying for a parse per keystroke
+// would be paying for nothing.
 //
 // A buffer no indexed folder contains is refused by the session, and the refusal
-// is not repeated here: the hint lane asks the same question when it is asked
-// for hints, and it can say why in the answer.
+// is not repeated here: the lanes ask the same question when they are asked, and
+// they can say why in the answer.
 fn (mut s Server) feed_session(uri string) {
-	if !s.client_announced().advertises(cap_inlay_hints) {
+	if !s.lanes_read_buffers() {
 		return
 	}
 	mut session := s.session or { return }

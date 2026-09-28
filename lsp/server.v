@@ -171,6 +171,20 @@ pub fn (s &Server) client_announced() ClientCapabilities {
 	return s.client_caps
 }
 
+// lanes_read_buffers reports whether the client asked for a lane whose answer
+// comes out of the session's parse of a buffer.
+//
+// An outline, a hint and a rename are all read from the text the client sent
+// rather than from the file on disk, so the parse has to be kept up to date for
+// whoever will ask. Formatting and diagnostics are not on the list: both read
+// the document the client already holds, and neither has a reason to make the
+// server parse a buffer per keystroke.
+pub fn (s &Server) lanes_read_buffers() bool {
+	announced := s.client_announced()
+	return announced.advertises(cap_inlay_hints) || announced.advertises(cap_document_symbols)
+		|| announced.advertises(cap_rename)
+}
+
 // is_ready reports that the client sent initialized.
 pub fn (s &Server) is_ready() bool {
 	return s.client_ready

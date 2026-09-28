@@ -14,6 +14,10 @@ struct Point {
 	y int
 }
 
+struct Greeting {
+	body string
+}
+
 enum Color {
 	red = 1
 	green
@@ -49,6 +53,10 @@ pub fn free_function() int {
 
 fn (l Logger) write(line string) {
 	println(line)
+}
+
+pub fn Greeting.new(body string) Greeting {
+	return Greeting{body}
 }
 '
 
@@ -121,6 +129,9 @@ fn test_the_outline_reads_like_the_file() {
 		'  y',
 		'  scale',
 		'  offset',
+		'Greeting',
+		'  body',
+		'  new',
 		'Color',
 		'  red',
 		'  green',
@@ -180,6 +191,20 @@ fn test_a_method_for_an_unknown_receiver_stays_at_the_top_level() {
 	symbols := symbols_of(symbols_fixture)
 	write := find_symbol(symbols, 'write')?
 	assert write.detail.starts_with('(Logger)')
+}
+
+// The static form of a method is a member of the type in its receiver, so it
+// belongs under that type like any other.
+fn test_a_static_method_hangs_under_its_type() {
+	symbols := symbols_of(symbols_fixture)
+	greeting := find_symbol(symbols, 'Greeting')?
+	mut members := []string{cap: greeting.children.len}
+	for child in greeting.children {
+		members << child.name
+	}
+	assert members == ['body', 'new']
+	assert find_symbol(symbols, 'new')?.kind == .method
+	assert find_symbol(symbols, 'new')?.detail == '(body string) Greeting'
 }
 
 fn test_the_names_are_where_the_text_says_they_are() {

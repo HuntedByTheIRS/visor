@@ -10,10 +10,13 @@ const thin_client = '{"textDocument":{"synchronization":{"dynamicRegistration":t
 
 // A client that advertises everything this build can act on.
 const rich_client = '{"workspace":{"workspaceFolders":true,"configuration":true,' +
-	'"didChangeConfiguration":{"dynamicRegistration":false}},' +
+	'"didChangeConfiguration":{"dynamicRegistration":false},' +
+	'"symbol":{"dynamicRegistration":false}},' +
 	'"textDocument":{"synchronization":{"dynamicRegistration":true},' +
 	'"diagnostic":{"dynamicRegistration":true,"relatedDocumentSupport":false},' +
-	'"inlayHint":{"dynamicRegistration":false}},' +
+	'"inlayHint":{"dynamicRegistration":false},' +
+	'"documentSymbol":{"hierarchicalDocumentSymbolSupport":true},' +
+	'"rename":{"dynamicRegistration":false,"prepareSupport":true}},' +
 	'"window":{"workDoneProgress":true},' +
 	'"general":{"positionEncodings":["utf-16","utf-8"]}}'
 
@@ -24,6 +27,10 @@ const bare_client = '{}'
 // editor with save hooks sends.
 const formatting_client = '{"textDocument":{"synchronization":{"dynamicRegistration":true},' +
 	'"formatting":{"dynamicRegistration":false}}}'
+
+// A client that offers rename but never the prepare request, which is the shape
+// an editor sends when it only ever asks for the rewrite.
+const rename_without_prepare_client = '{"textDocument":{"rename":{"dynamicRegistration":false}}}'
 
 fn client_for(client_capabilities string) ClientCapabilities {
 	body := '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":${client_capabilities}}}'
@@ -174,6 +181,29 @@ fn test_inlay_hints_are_registered_without_a_resolve() {
 	assert 'inlayHintProvider' !in caps_from(thin_client)
 }
 
+fn test_a_client_that_offers_symbols_gets_the_symbol_providers() {
+	caps := caps_from(rich_client)
+	// An outline and a workspace symbol search are both answered from what is
+	// in hand, so neither asks the client for a second round trip.
+	assert is_true(caps, 'documentSymbolProvider')
+	assert is_true(caps, 'workspaceSymbolProvider')
+	// A client that offered neither is never told to ask for one.
+	assert 'documentSymbolProvider' !in caps_from(bare_client)
+	assert 'workspaceSymbolProvider' !in caps_from(bare_client)
+	assert 'documentSymbolProvider' !in caps_from(thin_client)
+	assert 'workspaceSymbolProvider' !in caps_from(thin_client)
+}
+
+fn test_rename_is_registered_with_prepare_only_when_the_client_offers_it() {
+	provider := object_at(caps_from(rich_client), 'renameProvider')
+	assert is_true(provider, 'prepareProvider')
+	// The same feature without the prepare request: rename is still there, and
+	// the client is not told about a request it will never send.
+	plain := object_at(caps_from(rename_without_prepare_client), 'renameProvider')
+	assert !is_true(plain, 'prepareProvider')
+	assert 'renameProvider' !in caps_from(bare_client)
+}
+
 fn test_the_two_client_sets_do_not_produce_the_same_capabilities() {
 	thin := caps_from(thin_client)
 	rich := caps_with(rich_client, compiler_that_checks())
@@ -268,11 +298,11 @@ fn test_configuration_offers_are_read_from_the_client_side() {
 fn test_every_decision_is_written_down() {
 	notes := negotiate(client_for(bare_client), none).notes
 	// one line per capability considered, so a support question has an answer
-	// without re-reading the negotiation. Eight is what a client that offered
-	// nothing gets: sync, formatting, semantic tokens, inlay hints, workspace
-	// folders, the pull diagnostics provider, the pushed diagnostics and
-	// progress.
-	assert notes.len == 8
+	// without re-reading the negotiation. Eleven is what a client that offered
+	// nothing gets: sync, formatting, semantic tokens, inlay hints, the
+	// document symbols, the workspace symbols, rename, workspace folders, the
+	// pull diagnostics provider, the pushed diagnostics and progress.
+	assert notes.len == 11
 	mut sync_note := ''
 	for note in notes {
 		if note.starts_with('textDocumentSync:') {

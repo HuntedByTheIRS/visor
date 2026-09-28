@@ -35,4 +35,7 @@ fn (mut s Server) register_core() {
 	// that buffer, so the answer describes the text in front of the person and
 	// not the last save.
 	s.on('textDocument/inlayHint', handle_inlay_hint)
+	// The outline is the one lane that needs neither the compiler nor the
+	// index: it is a fact about one buffer's parse.
+	s.on('textDocument/documentSymbol', handle_document_symbols)
 }

@@ -15,6 +15,10 @@ const cap_work_done_progress = 'window.workDoneProgress'
 const cap_position_encodings = 'general.positionEncodings'
 const cap_configuration = 'workspace.configuration'
 const cap_did_change_configuration = 'workspace.didChangeConfiguration'
+const cap_document_symbols = 'textDocument.documentSymbol'
+const cap_workspace_symbols = 'workspace.symbol'
+const cap_rename = 'textDocument.rename'
+const cap_rename_prepare = 'textDocument.rename.prepareSupport'
 
 // @since 3.18.0
 // workspace/textDocumentContent is 3.18 and the capability path is provisional.
@@ -168,6 +172,41 @@ pub fn negotiate(client ClientCapabilities, compiler ?vtool.CapabilityReport) Ne
 		notes << 'inlayHintProvider: not registered, the client did not offer ${cap_inlay_hints}'
 	}
 
+	if client.advertises(cap_document_symbols) {
+		// An outline comes from one buffer's parse, so there is nothing to
+		// probe and nothing that can be missing at startup. A document this
+		// session does not hold is refused in words.
+		caps['documentSymbolProvider'] = json2.Any(true)
+		notes << 'documentSymbolProvider: registered, the client advertised ${cap_document_symbols}'
+	} else {
+		notes << 'documentSymbolProvider: not registered, the client did not offer ${cap_document_symbols}'
+	}
+
+	if client.advertises(cap_workspace_symbols) {
+		// Registered before any folder is indexed, because indexing happens in
+		// `initialized` and this reply is what the client is waiting on. The
+		// handler refuses in words when there is no index to search.
+		caps['workspaceSymbolProvider'] = json2.Any(true)
+		notes << 'workspaceSymbolProvider: registered, the client advertised ${cap_workspace_symbols}'
+	} else {
+		notes << 'workspaceSymbolProvider: not registered, the client did not offer ${cap_workspace_symbols}'
+	}
+
+	if client.advertises(cap_rename) {
+		// prepareRename is offered only to a client that said it will send it:
+		// the two are one feature, and a prepare round trip a client cannot
+		// make is a request that never arrives.
+		if client.flag(cap_rename_prepare) {
+			caps['renameProvider'] = rename_provider(true)
+			notes << 'renameProvider: registered with prepareRename, the client advertised ${cap_rename_prepare}'
+		} else {
+			caps['renameProvider'] = rename_provider(false)
+			notes << 'renameProvider: registered without prepareRename, the client did not offer ${cap_rename_prepare}'
+		}
+	} else {
+		notes << 'renameProvider: not registered, the client did not offer ${cap_rename}'
+	}
+
 	if client.flag(cap_workspace_folders) {
 		caps['workspace'] = workspace_capabilities()
 		notes << 'workspace.workspaceFolders: supported, the client advertised it'
@@ -312,6 +351,15 @@ fn diagnostic_provider() json2.Any {
 fn inlay_hint_provider() json2.Any {
 	mut provider := map[string]json2.Any{}
 	provider['resolveProvider'] = json2.Any(false)
+	return json2.Any(provider)
+}
+
+// rename_provider registers the rename lane. prepareProvider is what tells a
+// client it may ask which name a position holds before it asks for the rewrite,
+// and it is sent only when the client said it would send that request.
+fn rename_provider(with_prepare bool) json2.Any {
+	mut provider := map[string]json2.Any{}
+	provider['prepareProvider'] = json2.Any(with_prepare)
 	return json2.Any(provider)
 }
 
