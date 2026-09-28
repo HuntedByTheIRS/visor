@@ -41,4 +41,9 @@ fn (mut s Server) register_core() {
 	// A search crosses the workspace, so it is the lane that reads the index
 	// and nothing else. Its answer is only as current as the files on disk.
 	s.on('workspace/symbol', handle_workspace_symbols)
+	// A rename is planned from the parse the session holds and answered with the
+	// edits a client applies, so the server writes nothing itself and an undo is
+	// one undo in the editor.
+	s.on('textDocument/prepareRename', handle_prepare_rename)
+	s.on('textDocument/rename', handle_rename)
 }
