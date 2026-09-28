@@ -28,6 +28,20 @@ pub:
 	origin string
 }
 
+// vlib_dir is the standard library that belongs to this compiler: the directory
+// named `vlib` beside the executable.
+//
+// Nothing is guessed about it. A compiler installed without its library, or one
+// whose directory is named something else, answers none here and every module
+// lookup keeps the answer it had.
+pub fn (c &Compiler) vlib_dir() ?string {
+	dir := os.join_path(os.dir(c.abs_path), 'vlib')
+	if os.is_dir(dir) {
+		return dir
+	}
+	return none
+}
+
 // find resolves the compiler from the environment visor was started with.
 pub fn find() !Compiler {
 	mut env := map[string]string{}

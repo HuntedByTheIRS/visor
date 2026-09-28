@@ -1,5 +1,6 @@
 module lsp
 
+import engine
 import json2
 
 // handle_did_open records a buffer the client has open. From here until
@@ -105,7 +106,16 @@ fn (mut s Server) feed_session(uri string) {
 	if path == '' {
 		return
 	}
-	session.put_buffer(path, document.text) or { return }
+	buffer := session.put_buffer(path, document.text) or { return }
+	// A buffer that names a standard library module gets that module indexed, so
+	// `os.read_file` answers with its parameter names the way a call into the
+	// next file does. Only the modules the buffer names are read, and only once
+	// per session.
+	if compiler := s.compiler {
+		if vlib := compiler.vlib_dir() {
+			session.index_imported_modules(vlib, engine.imported_modules(buffer.file))
+		}
+	}
 }
 
 // close_session_buffer drops the parse of a buffer nobody has open, and hands the

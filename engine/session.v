@@ -43,6 +43,11 @@ pub mut:
 	buffers map[string]&Buffer
 	// indexed is false until a root has been indexed.
 	indexed bool
+	// cache_dir is where a root's index would be cached if this build saved one.
+	// It does not, so the value is only ever handed back to the indexer; it is
+	// remembered here so a later root, like a standard library module a buffer
+	// imports, does not need the caller to name it again.
+	cache_dir string
 	// index_ms is how long indexing the roots took. A server that spends four
 	// seconds of a handshake here owes the person a log line, and a test that
 	// changed that owes a number.
@@ -67,17 +72,78 @@ pub fn new_session() &Session {
 // affordable inside a handshake; a whole vlib costs seconds, which is why the
 // server indexes the folders it was given and nothing else.
 pub fn (mut s Session) index_root(root string, cache_dir string) {
-	if root in s.roots {
-		return
+	s.index_roots([root], .workspace, cache_dir)
+}
+
+// index_roots indexes several folders as one job. A root that is already there is
+// skipped, so calling it again with the same list costs nothing.
+//
+// The indexing runs once for the whole list rather than once per folder: every
+// pass walks the roots that are already known, and paying that walk per module
+// is what turns a few hundred milliseconds into a few seconds.
+pub fn (mut s Session) index_roots(paths []string, kind index.IndexingRootKind, cache_dir string) []string {
+	if cache_dir != '' {
+		s.cache_dir = cache_dir
 	}
+	// The index belongs to this process for as long as it runs, and the
+	// serializer behind the cache dies, so nothing is written where a later run
+	// would read it as the truth.
 	s.manager.indexer.set_no_save(true)
-	s.manager.indexer.add_indexing_root(root, .workspace, cache_dir)
-	s.roots << root
+	mut added := []string{cap: paths.len}
+	for path in paths {
+		if path in s.roots || !os.is_dir(path) {
+			continue
+		}
+		s.manager.indexer.add_indexing_root(path, kind, cache_dir)
+		s.roots << path
+		added << path
+	}
+	if added.len == 0 {
+		return added
+	}
 	started := time.ticks()
 	s.manager.indexer.index(fn (_root index.IndexingRoot, _index int) {})
 	s.manager.setup_stub_indexes()
 	s.index_ms += time.ticks() - started
 	s.indexed = true
+	return added
+}
+
+// index_imported_modules reads the standard library modules a buffer imports
+// into the index, so a call into `os` answers the way a call into the next file
+// does.
+//
+// A vlib module is a directory, and only the modules a buffer names are read.
+// The whole library measured about ten seconds for this machine, while the
+// handful of modules one file imports cost a few hundred milliseconds between
+// them, once per session: a root that is already indexed is skipped.
+//
+// `builtin` goes in first whether or not it was imported, because the signature
+// of everything else is written in its types and a module indexed without it
+// answers with the names of the types left out.
+//
+// The answer says nothing about whether the modules were found. A module the
+// compiler keeps somewhere else, or a name in a file that does not exist, adds
+// nothing and every call into it keeps inferring unknown.
+pub fn (mut s Session) index_imported_modules(vlib_dir string, modules []string) []string {
+	mut wanted := []string{cap: modules.len + 1}
+	wanted << 'builtin'
+	for module in modules {
+		if module !in wanted {
+			wanted << module
+		}
+	}
+	mut paths := []string{cap: wanted.len}
+	for module in wanted {
+		paths << os.join_path(vlib_dir, ...module.split('.'))
+	}
+	added := s.index_roots(paths, .standard_library, s.cache_dir)
+	if added.len > 0 {
+		// A call that could not be resolved a moment ago is resolved now, and
+		// the answer it was given is still in the caches.
+		psi.forget_answers()
+	}
+	return added
 }
 
 // put_buffer makes the text a client sent the text this session answers from,
