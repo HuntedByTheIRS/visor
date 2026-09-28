@@ -234,6 +234,41 @@ fn test_a_hint_carries_a_position_a_client_can_place() {
 	}
 }
 
+// entry_flag reads a boolean out of a hint, which is how a client is told where
+// the spaces around a label go.
+fn entry_flag(entry map[string]json2.Any, name string) bool {
+	value := entry[name] or { return false }
+	if value is bool {
+		return value as bool
+	}
+	return false
+}
+
+// A label is drawn against the text around it, so the padding it asks for is the
+// difference between `factor: 4` and `factor4`, and between
+// `os.execute('x')defer: y` and a label that reads as its own word.
+fn test_the_labels_ask_for_the_spacing_they_need() {
+	dir := hint_project('spacing')
+	mut sink, mut s := hint_session(dir, 'main.v', lane_buffer)
+	ask_for_hints(mut s, 'file://${dir}/main.v', none)
+	items := as_array(sink.last_message().result) or { panic('the hint result is not an array') }
+	mut padded_left := 0
+	mut padded_right := 0
+	for item in items {
+		entry := as_object(item) or { panic('a hint is not an object') }
+		if entry_flag(entry, 'paddingLeft') {
+			padded_left++
+		}
+		if entry_flag(entry, 'paddingRight') {
+			padded_right++
+		}
+	}
+	// the four labels that sit in front of something, and the one that follows
+	// the last statement of the block
+	assert padded_right == 4
+	assert padded_left == 1
+}
+
 // The function this buffer calls is declared in the buffer itself and is on no
 // disk, so the parameter names below are a question only the buffer's own stubs
 // can answer. The struct it returns comes from the file next to it, so the field

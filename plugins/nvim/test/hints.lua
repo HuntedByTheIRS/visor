@@ -35,8 +35,15 @@ end
 -- The buffer the checks read from. Every line is there for a hint that has to
 -- be checked, and the positions are looked up in this text rather than written
 -- down, so an edit here does not silently move an expectation.
+--
+-- It is also short on purpose. Neovim asks for hints over the lines it has
+-- drawn, and a headless editor draws a screen's worth, so a file that runs past
+-- that gets no hints on the lines below it and this script would fail on a
+-- fixture that is merely long.
 local source = {
   'module main',
+  '',
+  'import os',
   '',
   'struct Point {',
   '\tx int',
@@ -56,6 +63,7 @@ local source = {
   '\tscaled := scale(base, 4)',
   '\tdefer println(scaled)',
   '\tprintln(label(7))',
+  '\tcontent := os.read_file("v.mod") or { "" }',
   '}',
 }
 
@@ -87,7 +95,11 @@ local function drawn_hints(bufnr)
       label[#label + 1] = chunk[1]
     end
     if is_hint then
-      hints[#hints + 1] = { row = mark[2], col = mark[3], label = (table.concat(label):gsub('%s+$', '')) }
+      -- The padding a hint asks for arrives as its own chunk, in front of the
+      -- label or behind it, so both ends are trimmed before the label is
+      -- compared with what the server said.
+      local text = table.concat(label):gsub('^%s+', ''):gsub('%s+$', '')
+      hints[#hints + 1] = { row = mark[2], col = mark[3], label = text }
     end
   end
   return hints
@@ -175,6 +187,12 @@ check('every family reached the screen',
     and labels:find('n:', 1, true) ~= nil
     and labels:find('defer:', 1, true) ~= nil,
   labels)
+
+-- The standard library is read for the modules a buffer imports, so a call into
+-- one of them answers like a call into the next file. The parameter of
+-- os.read_file is named `path` in the library this server found.
+check('a call into the standard library gets its parameter name',
+  hint_at(hints, 'path:') ~= nil, labels)
 
 -- A field name belongs on the value it names, which is the `2` of
 -- `base := Point{ 2, 3 }`.

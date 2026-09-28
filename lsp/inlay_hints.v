@@ -59,6 +59,9 @@ fn handle_inlay_hint(mut s Server, req Message) Reply {
 		entry['position'] = encode_position(position)
 		entry['label'] = json2.Any(hint.label)
 		entry['kind'] = json2.Any(int(hint.kind))
+		if hint.padding_left {
+			entry['paddingLeft'] = json2.Any(true)
+		}
 		if hint.padding_right {
 			entry['paddingRight'] = json2.Any(true)
 		}

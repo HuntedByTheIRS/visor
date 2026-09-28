@@ -33,6 +33,10 @@ pub:
 	// follows it, which is what keeps `factor:` from reading as part of the
 	// argument.
 	padding_right bool
+	// padding left asks for a space before the label. A label that follows code
+	// on the line it is drawn on needs it, or it reads as the rest of that code:
+	// `os.execute('echo hi')defer: x.contains('hi')`.
+	padding_left bool
 	// tooltip is empty when the label is everything the hint knows. It carries
 	// where an answer came from when that is somewhere the reader cannot see,
 	// such as the parameter list of a function in another file.
@@ -224,47 +228,148 @@ fn spells_its_type(definition psi.VarDefinition, text string, name string) bool 
 // defer_hints shows what a defer will run, at the point in its block where it
 // runs.
 //
-// The block's closing brace is the anchor, because that is where the deferred
-// code lands. Several defers in one block become one label in the order they
-// run, which is the reverse of the order they are written in; splitting them
-// into one hint each would stack several labels on the same position and leave
-// the client to decide what order they read in.
+// The block's closing brace is what the label is placed above, and several
+// defers in one block become one label in the order they run, which is the
+// reverse of the order they are written in; splitting them into one hint each
+// would stack several labels on the same position and leave the client to decide
+// what order they read in.
 //
-// `defer f()` does not parse in this grammar. The keyword arrives as an error
-// node and the call it defers is the child that follows, so both spellings are
-// read here, and the block spelling is the one the parser understands.
+// The keyword is read out of the block's text rather than out of a node kind.
+// `defer f()` does not parse: depending on what follows it the grammar leaves
+// `defer` as an error token or swallows it whole, and in both shapes the call
+// under it arrives as an ordinary statement of the block. What a reader sees is
+// the keyword either way, so that is what is read, at this block's own depth, so
+// a defer inside a nested block belongs to that block and is not counted twice.
 fn defer_hints(block psi.PsiElement, text string, mut hints []Hint) {
-	children := block.children()
-	mut deferred := []string{}
+	codes := deferred_bodies(element_text(block, text))
+	if codes.len == 0 {
+		return
+	}
+	mut shortened := []string{cap: codes.len}
+	for i := codes.len - 1; i >= 0; i-- {
+		shortened << shorten(codes[i])
+	}
+	hints << Hint{
+		offset:       defer_anchor(text, element_end(block))
+		label:        'defer: ${shortened.join('; ')}'
+		kind:         .type_
+		padding_left: true
+		tooltip:      codes.join('\n')
+	}
+}
+
+// deferred_bodies returns the code each defer in a block runs, in the order the
+// source writes them.
+//
+// Depth is counted in braces so that only the statements written in this block
+// are read. The braces inside a string or a comment are counted too, which is
+// the one thing this walk gets wrong; a hint is not worth a lexer.
+fn deferred_bodies(body string) []string {
+	mut codes := []string{}
+	lines := body.split_into_lines()
+	mut depth := 0
 	mut index := 0
-	for index < children.len {
-		child := children[index]
-		kind := child.node().type_name
-		if kind == .defer_statement {
-			deferred << deferred_code(element_text(child, text))
+	for index < lines.len {
+		trimmed := lines[index].trim_space()
+		if depth == 1 && is_defer_line(trimmed) {
+			rest := trimmed[5..].trim_space()
+			if rest.starts_with('{') {
+				inner := deferred_block_lines(lines, index, rest)
+				if inner != '' {
+					codes << inner
+				}
+				index += inner_line_count(lines, index, rest)
+			} else if rest != '' {
+				codes << rest
+			}
 			index++
 			continue
 		}
-		if kind == .error && element_text(child, text) == 'defer' && index + 1 < children.len {
-			deferred << deferred_code(element_text(children[index + 1], text))
-			index += 2
-			continue
-		}
+		depth += brace_delta(trimmed)
 		index++
 	}
-	if deferred.len == 0 {
-		return
+	return codes
+}
+
+// deferred_block_lines returns the code inside a `defer { ... }` that starts on
+// the line at `index`, with its braces taken off.
+fn deferred_block_lines(lines []string, index int, first_line string) string {
+	rest := first_line[1..]
+	// A block written on one line carries its code between its own braces, and
+	// there is nothing under it to walk.
+	if brace_delta(first_line) <= 0 {
+		inner := rest.trim_space()
+		if inner.ends_with('}') {
+			return inner[..inner.len - 1].trim_space()
+		}
 	}
-	mut codes := []string{cap: deferred.len}
-	for i := deferred.len - 1; i >= 0; i-- {
-		codes << shorten(deferred[i])
+	mut body := []string{}
+	// The line the keyword is on has already opened the block, so the count
+	// starts at one and runs until the brace that closes it.
+	mut depth := 1
+	mut line_index := index
+	mut inner_rest := rest
+	for {
+		depth += brace_delta(inner_rest)
+		if depth <= 0 {
+			break
+		}
+		if inner_rest.trim_space() != '' {
+			body << inner_rest.trim_space()
+		}
+		line_index++
+		if line_index >= lines.len {
+			break
+		}
+		inner_rest = lines[line_index]
 	}
-	hints << Hint{
-		offset:  defer_anchor(text, element_end(block))
-		label:   'defer: ${codes.join('; ')}'
-		kind:    .type_
-		tooltip: deferred.join('\n')
+	return body.join('\n').trim_space()
+}
+
+// inner_line_count is how many lines a `defer { ... }` covers, so the walk can
+// step over the body it has already read.
+fn inner_line_count(lines []string, index int, first_line string) int {
+	mut depth := 1
+	mut line_index := index
+	mut rest := first_line[1..]
+	for {
+		depth += brace_delta(rest)
+		if depth <= 0 {
+			return line_index - index
+		}
+		line_index++
+		if line_index >= lines.len {
+			return line_index - index
+		}
+		rest = lines[line_index]
 	}
+}
+
+// is_defer_line reports whether a trimmed line is a defer: the keyword and then
+// a space or the braces under it.
+fn is_defer_line(trimmed string) bool {
+	if !trimmed.starts_with('defer') {
+		return false
+	}
+	if trimmed.len == 5 {
+		return false
+	}
+	next := trimmed[5]
+	return next == ` ` || next == `	` || next == `{`
+}
+
+// brace_delta is how many blocks a line opens or closes.
+fn brace_delta(line string) int {
+	mut delta := 0
+	for c in line {
+		if c == `{` {
+			delta++
+		}
+		if c == `}` {
+			delta--
+		}
+	}
+	return delta
 }
 
 // defer_anchor is where a deferred label is drawn: the end of the last line of
@@ -300,16 +405,6 @@ fn defer_anchor(text string, block_end int) int {
 // indentation is made of, which is what a label skips back over.
 fn is_block_whitespace(c u8) bool {
 	return c == ` ` || c == `	` || c == `\n` || c == `\r`
-}
-
-// deferred_code strips the keyword and the braces a defer statement carries, so
-// what is left is the code that runs.
-fn deferred_code(statement string) string {
-	code := statement.trim_space().trim_string_left('defer').trim_space()
-	if code.starts_with('{') && code.ends_with('}') {
-		return code[1..code.len - 1].trim_space()
-	}
-	return code
 }
 
 // shorten keeps a deferred body to something a client can draw on one line. Two

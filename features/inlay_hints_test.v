@@ -119,6 +119,59 @@ fn test_a_defer_hint_sits_where_the_code_runs() {
 	assert defer_hint.tooltip == 'println(text)'
 }
 
+const block_defer_buffer = 'module main
+
+fn main() {
+	defer {
+		text := label(4)
+		println(text)
+	}
+	println(1)
+}
+'
+
+const nested_defer_buffer = 'module main
+
+fn main() {
+	defer println(1)
+	if true {
+		defer println(2)
+	}
+}
+'
+
+// A defer whose body is a block is the spelling the parser understands, and its
+// code is what sits under the braces.
+fn test_a_defer_block_shows_the_code_under_its_braces() {
+	hints := hints_in(block_defer_buffer, HintOptions{})
+	defer_hint := find_hint(hints, 'defer: text := label(4) println(text)') or {
+		mut labels := []string{}
+		for hint in hints {
+			labels << hint.label
+		}
+		panic('no block defer hint, got ${labels}')
+	}
+	assert defer_hint.tooltip == 'text := label(4)\nprintln(text)'
+	// The label follows code on the line it is drawn on, so the client is asked
+	// for a space in front of it.
+	assert defer_hint.padding_left
+}
+
+// A defer written in a nested block runs at the end of that block, and it is
+// that block's label to carry. Reading the lines of the outer block as well is
+// what would put the same code in two hints.
+fn test_a_defer_in_a_nested_block_belongs_to_that_block() {
+	hints := hints_in(nested_defer_buffer, HintOptions{})
+	mut labels := []string{}
+	for hint in hints {
+		labels << hint.label
+	}
+	assert 'defer: println(1)' in labels
+	assert 'defer: println(2)' in labels
+	assert labels.filter(it == 'defer: println(1)').len == 1
+	assert labels.filter(it == 'defer: println(2)').len == 1
+}
+
 fn test_a_value_that_spells_its_own_type_is_not_labelled() {
 	hints := hints_in(hint_buffer, HintOptions{})
 	// `base := Point{ 2, 3 }` says Point twice already. `scaled` and `text` do
