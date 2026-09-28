@@ -19,6 +19,7 @@ struct Point {
 	y int
 }
 
+@[inline]
 fn scale(p Point, factor int) Point {
 	return Point{p.x * factor, p.y * factor}
 }

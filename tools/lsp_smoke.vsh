@@ -641,12 +641,17 @@ fn main() {
 		mut labels := []string{}
 		mut field_line := -1
 		mut field_column := -1
+		mut attribute_line := -1
+		mut attribute_column := -1
 		mut type_hint_found := false
 		for item in items {
 			label := hint_label(item)
 			labels << label
 			if label == 'x:' {
 				field_line, field_column = hint_position(item)
+			}
+			if label == '    | inline' {
+				attribute_line, attribute_column = hint_position(item)
 			}
 			if label == ': Point' {
 				type_hint_found = true
@@ -673,6 +678,14 @@ fn main() {
 		runner.record('the field hint sits on the value it describes',
 			field_line == want_line && field_column == want_column,
 			'${field_line}:${field_column}, wanted ${want_line}:${want_column}')
+
+		// `fn scale` carries `@[inline]`, and the label restating it belongs after
+		// the brace the body opens with rather than anywhere else on the line.
+		want_attribute_line := line_of(buffer, 'fn scale(')
+		want_attribute_column := column_of(buffer, want_attribute_line, '{') + 1
+		runner.record('a declaration names the attributes it carries',
+			attribute_line == want_attribute_line && attribute_column == want_attribute_column,
+			'${attribute_line}:${attribute_column}, wanted ${want_attribute_line}:${want_attribute_column}')
 	}
 
 	// Diagnostics are computed from the client's text, so this pair of requests

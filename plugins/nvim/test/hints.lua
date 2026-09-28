@@ -44,12 +44,12 @@ local source = {
   'module main',
   '',
   'import os',
-  '',
   'struct Point {',
   '\tx int',
   '\ty int',
   '}',
   '',
+  '@[inline]',
   'fn scale(p Point, factor int) Point {',
   '\treturn Point{ p.x * factor, p.y * factor }',
   '}',
@@ -194,6 +194,7 @@ check('every family reached the screen',
     and labels:find(': Point', 1, true) ~= nil
     and labels:find('p:', 1, true) ~= nil
     and labels:find('n:', 1, true) ~= nil
+    and labels:find('| inline', 1, true) ~= nil
     and labels:find('defer:', 1, true) ~= nil,
   labels)
 
@@ -202,6 +203,19 @@ check('every family reached the screen',
 -- os.read_file is named `path` in the library this server found.
 check('a call into the standard library gets its parameter name',
   hint_at(hints, 'path:') ~= nil, labels)
+
+-- An attribute is written above the declaration it belongs to, so the label
+-- restating it belongs at the end of that declaration: after the brace the body
+-- opens with, rather than at the end of the line, which is a different place the
+-- moment a line holds anything else.
+local scale_row, scale_line = line_of(bufnr, 'fn scale(')
+local attribute = hint_at(hints, '| inline')
+local attribute_column = column_of(scale_line or '', '{') + 1
+check('a declaration names the attributes it carries',
+  attribute ~= nil and attribute.row == scale_row and attribute.col == attribute_column,
+  attribute and string.format('row %d col %d, wanted row %d col %d',
+    attribute.row, attribute.col, scale_row, attribute_column)
+    or string.format('no attribute hint, %s', labels))
 
 -- A field name belongs on the value it names, which is the `2` of
 -- `base := Point{ 2, 3 }`.
