@@ -12,7 +12,8 @@ const thin_client = '{"textDocument":{"synchronization":{"dynamicRegistration":t
 const rich_client = '{"workspace":{"workspaceFolders":true,"configuration":true,' +
 	'"didChangeConfiguration":{"dynamicRegistration":false}},' +
 	'"textDocument":{"synchronization":{"dynamicRegistration":true},' +
-	'"diagnostic":{"dynamicRegistration":true,"relatedDocumentSupport":false}},' +
+	'"diagnostic":{"dynamicRegistration":true,"relatedDocumentSupport":false},' +
+	'"inlayHint":{"dynamicRegistration":false}},' +
 	'"window":{"workDoneProgress":true},' +
 	'"general":{"positionEncodings":["utf-16","utf-8"]}}'
 
@@ -161,6 +162,18 @@ fn test_the_full_client_gets_the_providers_it_advertised() {
 	assert string_at(caps, 'positionEncoding') == 'utf-16'
 }
 
+fn test_inlay_hints_are_registered_without_a_resolve() {
+	caps := caps_with(rich_client, none)
+	provider := object_at(caps, 'inlayHintProvider')
+	// Every label is final: the answer is in hand when the request arrives, so
+	// a resolve round trip would only be a way to send it later.
+	assert !is_true(provider, 'resolveProvider')
+	// A client that never offered the capability gets no provider, so it is
+	// never told to ask for hints this session cannot place.
+	assert 'inlayHintProvider' !in caps_from(bare_client)
+	assert 'inlayHintProvider' !in caps_from(thin_client)
+}
+
 fn test_the_two_client_sets_do_not_produce_the_same_capabilities() {
 	thin := caps_from(thin_client)
 	rich := caps_with(rich_client, compiler_that_checks())
@@ -255,10 +268,11 @@ fn test_configuration_offers_are_read_from_the_client_side() {
 fn test_every_decision_is_written_down() {
 	notes := negotiate(client_for(bare_client), none).notes
 	// one line per capability considered, so a support question has an answer
-	// without re-reading the negotiation. Seven is what a client that offered
-	// nothing gets: sync, formatting, semantic tokens, workspace folders, the
-	// pull diagnostics provider, the pushed diagnostics and progress.
-	assert notes.len == 7
+	// without re-reading the negotiation. Eight is what a client that offered
+	// nothing gets: sync, formatting, semantic tokens, inlay hints, workspace
+	// folders, the pull diagnostics provider, the pushed diagnostics and
+	// progress.
+	assert notes.len == 8
 	mut sync_note := ''
 	for note in notes {
 		if note.starts_with('textDocumentSync:') {

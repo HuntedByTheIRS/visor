@@ -109,6 +109,8 @@ pub:
 // handlers yet (hover, completion, definition and the rest) would turn a visible
 // MethodNotFound into an empty answer. And the 3.18 virtual document provider is
 // advertised only where content exists to serve.
+const cap_inlay_hints = 'textDocument.inlayHint'
+
 pub fn negotiate(client ClientCapabilities, compiler ?vtool.CapabilityReport) Negotiation {
 	mut caps := map[string]json2.Any{}
 	mut notes := []string{}
@@ -153,6 +155,17 @@ pub fn negotiate(client ClientCapabilities, compiler ?vtool.CapabilityReport) Ne
 		}
 	} else {
 		notes << 'semanticTokensProvider: not registered, the client did not offer ${cap_semantic_tokens}'
+	}
+
+	if client.advertises(cap_inlay_hints) {
+		// No probe backs this one, and none is needed: every hint is computed
+		// from the buffer's own parse and the workspace index, which is built
+		// from the folders the client named. A session without a folder answers
+		// an error that says so rather than an empty list.
+		caps['inlayHintProvider'] = inlay_hint_provider()
+		notes << 'inlayHintProvider: registered without resolve, the client advertised ${cap_inlay_hints}'
+	} else {
+		notes << 'inlayHintProvider: not registered, the client did not offer ${cap_inlay_hints}'
 	}
 
 	if client.flag(cap_workspace_folders) {
@@ -289,6 +302,16 @@ fn diagnostic_provider() json2.Any {
 	// `workspace/diagnostic` that this build does not have.
 	provider['interFileDependencies'] = json2.Any(false)
 	provider['workspaceDiagnostics'] = json2.Any(false)
+	return json2.Any(provider)
+}
+
+// inlay_hint_provider registers the hint lane without a resolve round trip.
+// Every label this server sends is final: the answer comes from the buffer's
+// parse and the workspace index, both of which are in hand when the request
+// arrives, and a second round trip would only be a way to send it later.
+fn inlay_hint_provider() json2.Any {
+	mut provider := map[string]json2.Any{}
+	provider['resolveProvider'] = json2.Any(false)
 	return json2.Any(provider)
 }
 

@@ -12,6 +12,7 @@ fn handle_did_open(mut s Server, req Message) Reply {
 	item_value := params['textDocument'] or { return ok(null_value()) }
 	item := parse_text_document(item_value) or { return ok(null_value()) }
 	s.documents.open_document(item)
+	s.feed_session(item.uri)
 	s.schedule_check(item.uri)
 	return ok(null_value())
 }
@@ -36,6 +37,7 @@ fn handle_did_change(mut s Server, req Message) Reply {
 		s.sync_refusals++
 		return ok(null_value())
 	}
+	s.feed_session(item.uri)
 	s.schedule_check(item.uri)
 	return ok(null_value())
 }
@@ -51,6 +53,7 @@ fn handle_did_close(mut s Server, req Message) Reply {
 	item_value := params['textDocument'] or { return ok(null_value()) }
 	item := parse_text_document(item_value) or { return ok(null_value()) }
 	s.documents.close_document(item.uri)
+	s.close_session_buffer(item.uri)
 	s.clear_diagnostics(item.uri)
 	return ok(null_value())
 }
@@ -74,9 +77,46 @@ fn handle_did_save(mut s Server, req Message) Reply {
 	// a save for a buffer that is not open is a client bug, and one that did not
 	// arrive as a notification we can answer.
 	if s.documents.save_document(item.uri, text) {
+		s.feed_session(item.uri)
 		s.schedule_check(item.uri)
 	}
 	return ok(null_value())
+}
+
+// feed_session hands the buffer's text to the workspace index, which is what
+// makes a question about the buffer answerable from the buffer.
+//
+// It runs on every edit, and it is the price of the index describing the text in
+// front of the person rather than the last save: the buffer is reparsed and the
+// workspace index is rebuilt from it. A client that never advertised inlay hints
+// is not fed at all, because the index has no other reader today and paying for
+// it per keystroke would be paying for nothing.
+//
+// A buffer no indexed folder contains is refused by the session, and the refusal
+// is not repeated here: the hint lane asks the same question when it is asked
+// for hints, and it can say why in the answer.
+fn (mut s Server) feed_session(uri string) {
+	if !s.client_announced().advertises(cap_inlay_hints) {
+		return
+	}
+	mut session := s.session or { return }
+	document := s.documents.get(uri) or { return }
+	path := path_from_uri(uri)
+	if path == '' {
+		return
+	}
+	session.put_buffer(path, document.text) or { return }
+}
+
+// close_session_buffer drops the parse of a buffer nobody has open, and hands the
+// file back to the index as it is on disk.
+fn (mut s Server) close_session_buffer(uri string) {
+	mut session := s.session or { return }
+	path := path_from_uri(uri)
+	if path == '' {
+		return
+	}
+	session.close_buffer(path)
 }
 
 // handle_did_change_configuration stores the settings the client pushed. Whether

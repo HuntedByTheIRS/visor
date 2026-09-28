@@ -30,4 +30,9 @@ fn (mut s Server) register_core() {
 	// provider only when the client offers the request and the compiler can
 	// report a finding at all.
 	s.on('textDocument/diagnostic', handle_diagnostic)
+	// Inlay hints are the lane that reads the workspace index rather than the
+	// buffer alone. A request is answered from the parse the session holds for
+	// that buffer, so the answer describes the text in front of the person and
+	// not the last save.
+	s.on('textDocument/inlayHint', handle_inlay_hint)
 }

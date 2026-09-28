@@ -1,6 +1,8 @@
 module lsp
 
+import engine
 import json2
+import os
 
 // WorkspaceFolder is one root the client has open. Only the uri and name are
 // kept: anything else a lane needs can be read from the folder later.
@@ -25,6 +27,9 @@ fn handle_initialize(mut s Server, req Message) Reply {
 	s.client_caps = new_client_capabilities(params['capabilities'] or { null_value() })
 	s.client_name = string_field(params, 'clientInfo.name')
 	s.workspace_folders = read_workspace_folders(params)
+	// The session is built here, empty, so every lane that reads it has one
+	// object to ask rather than a second place to check whether it exists.
+	s.session = engine.new_session()
 	if options := params['initializationOptions'] {
 		s.initialization_options = options
 	}
@@ -47,12 +52,43 @@ fn handle_initialize(mut s Server, req Message) Reply {
 
 // handle_initialized takes the notification that says the client is ready. Only
 // after it may the server ask the client for anything.
+//
+// The workspace index is built here rather than in initialize. The folders are
+// read at initialize, and the reply to it is what the client waits for before it
+// draws anything, so the indexing belongs on the far side of the handshake where
+// nothing is blocked on the answer but this server's own next request.
 fn handle_initialized(mut s Server, _ Message) Reply {
 	if s.state != .initialized {
 		return ok(null_value())
 	}
 	s.client_ready = true
+	s.index_workspace()
 	return ok(null_value())
+}
+
+// index_workspace indexes the folders the client named, which is the whole of
+// what every engine-backed lane can see.
+//
+// A folder that is not a readable directory is named in the notes and skipped:
+// there is nothing the client could do with an error about it, and the lane that
+// asks afterwards reports what it did not get to. Indexing a folder that is
+// already indexed does nothing, which is what makes this safe to call again when
+// the client adds a folder to the session.
+fn (mut s Server) index_workspace() {
+	mut session := s.session or { return }
+	mut indexed := 0
+	for folder in s.workspace_folders {
+		path := path_from_uri(folder.uri)
+		if path == '' || !os.is_dir(path) {
+			s.negotiation_notes << 'index: skipped ${folder.uri}, which is not a directory this process can read'
+			continue
+		}
+		session.index_root(path, index_cache_dir())
+		indexed++
+	}
+	if indexed > 0 {
+		s.negotiation_notes << 'index: ${indexed} folder(s) in ${session.index_ms} ms'
+	}
 }
 
 // handle_shutdown stops accepting work. The process stays alive until exit, so

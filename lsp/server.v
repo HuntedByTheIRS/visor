@@ -1,6 +1,7 @@
 module lsp
 
 import diag
+import engine
 import json2
 import vtool
 
@@ -94,6 +95,10 @@ mut:
 	// semantic_legend is the token legend the client agreed to in initialize.
 	// A request that arrives with an empty legend has nowhere to put a token.
 	semantic_legend SemanticLegend
+	// session owns the workspace index and the parse of every open buffer. It
+	// is built in initialize from the folders the client named, and every lane
+	// that answers from the engine reads it.
+	session ?&engine.Session
 	// pending maps the ids of requests the server sent to the client onto what
 	// the reply means.
 	pending          map[string]PendingRequest
