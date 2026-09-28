@@ -245,4 +245,69 @@ fn test_each_family_is_turned_off_by_asking() {
 	})
 	assert find_hint(without_fields, 'x:') == none
 	assert find_hint(without_fields, 'p:') != none
+
+	without_attributes := hints_in(attribute_buffer, HintOptions{
+		attributes: false
+	})
+	assert hint_labels(without_attributes) == []
+}
+
+// A function and a module carry their attributes on the lines above them, which
+// is where a reader stops seeing them once the declaration grows. The comment
+// after the module name is what tells an anchor that follows the declaration from
+// one that follows the line the declaration happens to be written on.
+const attribute_buffer = '@[translated]
+module main // the fixture
+
+@[inline]
+@[unsafe]
+fn add(a int, b int) int {
+	return a + b
+}
+'
+
+// Every shape an attribute name comes in: `name: value`, a condition, a
+// call-style attribute with named arguments, and a route whose path and methods
+// both count.
+const attribute_forms_buffer = "module main
+
+@[callconv: 'stdcall']
+@[if debug]
+@[deprecated(msg: 'use add')]
+@['/index'; get]
+fn window_proc() {}
+"
+
+fn test_a_declaration_names_the_attributes_it_carries() {
+	hints := hints_in(attribute_buffer, HintOptions{})
+	assert hint_labels(hints) == ['    | translated', '    | inline:unsafe']
+}
+
+fn test_an_attribute_label_sits_at_the_end_of_the_declaration() {
+	hints := hints_in(attribute_buffer, HintOptions{})
+
+	// After the name of the module, not at the end of the line the name is on,
+	// and after the brace the body opens with.
+	module_hint := find_hint(hints, '    | translated') or { panic('no module hint') }
+	assert attribute_buffer[..module_hint.offset].ends_with('module main')
+	assert attribute_buffer[module_hint.offset..].starts_with(' //')
+
+	function_hint := find_hint(hints, '    | inline:unsafe') or { panic('no function hint') }
+	assert attribute_buffer[..function_hint.offset].ends_with('{')
+	assert function_hint.kind == .type_
+	// the label names the attributes and the tooltip carries what they say
+	assert function_hint.tooltip == '@[inline]\n@[unsafe]'
+}
+
+fn test_the_label_names_every_shape_an_attribute_comes_in() {
+	hints := hints_in(attribute_forms_buffer, HintOptions{})
+	// A route's path loses the quotes the source writes it with, a condition is
+	// shown whole, and a call-style attribute is named by the word before its
+	// arguments rather than by the text up to the first colon.
+	assert hint_labels(hints) == ['    | callconv:if debug:deprecated:/index:get']
+}
+
+fn test_a_declaration_without_attributes_gets_no_label() {
+	hints := hints_in('module main\n\nfn plain() {}\n', HintOptions{})
+	assert hints.len == 0
 }

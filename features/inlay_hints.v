@@ -11,6 +11,12 @@
 // semicolon so it reads as the line's continuation rather than as another
 // argument to the call in front of it.
 //
+// Another label restates what is written above the line it sits on. A function
+// or a module carries its attributes on the lines before it, out of the reader's
+// way once the declaration is long, so the names are drawn again where the
+// declaration is: `fn scale(...) {    | inline:unsafe` and
+// `module main    | has_globals`.
+//
 // A hint is only ever emitted for something the engine resolved. An argument
 // whose callee could not be found gets no label rather than a guessed one, and
 // that is the whole difference between this lane and a grep for `(`.
@@ -60,6 +66,9 @@ pub mut:
 	// defers shows the code a defer will run at the point in the block where it
 	// runs.
 	defers bool = true
+	// attributes names the attributes a function or a module carries, on the
+	// line the declaration opens.
+	attributes bool = true
 }
 
 // hints_for walks the parse of one buffer and returns every hint the options
@@ -95,6 +104,9 @@ fn collect_hints(element psi.PsiElement, text string, options HintOptions, mut h
 	}
 	if options.defers && kind == .block {
 		defer_hints(element, text, mut hints)
+	}
+	if options.attributes && kind in [.function_declaration, .module_clause] {
+		attribute_hints(element, text, mut hints)
 	}
 	for child in element.children() {
 		collect_hints(child, text, options, mut hints)
@@ -224,6 +236,139 @@ fn spells_its_type(definition psi.VarDefinition, text string, name string) bool 
 		}
 	}
 	return false
+}
+
+// attribute_hints names the attributes a function or a module carries.
+//
+// The label follows the text on the line rather than opening with a separator
+// the way the defer label does: nothing in front of it is code that could take it
+// for an argument, because the bracket the declaration ends with has already
+// closed.
+fn attribute_hints(element psi.PsiElement, text string, mut hints []Hint) {
+	attributes := attribute_nodes(element)
+	names := attribute_names(attributes, text)
+	if names.len == 0 {
+		return
+	}
+	hints << Hint{
+		offset:        attribute_anchor(element)
+		label:         '    | ${names.join(':')}'
+		kind:          .type_
+		padding_right: true
+		tooltip:       attribute_tooltip(attributes, text)
+	}
+}
+
+// attribute_nodes returns the attribute nodes a declaration carries. They hang
+// under one `attributes` node, above the declaration's own name, which is also
+// where the module clause keeps the ones written over it.
+fn attribute_nodes(element psi.PsiElement) []psi.PsiElement {
+	mut found := []psi.PsiElement{}
+	for child in element.children() {
+		if child.node().type_name != .attributes {
+			continue
+		}
+		for nested in child.children() {
+			if nested.node().type_name == .attribute {
+				found << nested
+			}
+		}
+	}
+	return found
+}
+
+// attribute_names returns what each attribute is called, in the order the source
+// writes them.
+//
+// The name is not always a bare word: `@[deprecated: 'use x']` puts it before the
+// colon, `@[if debug]` is a condition and is shown whole, and a route's
+// `@['/index'; get]` carries a path as well as the methods under it. An
+// attribute with nothing to name contributes nothing.
+fn attribute_names(attributes []psi.PsiElement, text string) []string {
+	mut names := []string{cap: attributes.len}
+	for attribute in attributes {
+		for expression in attribute.children() {
+			if expression.node().type_name != .attribute_expression {
+				continue
+			}
+			name := attribute_name(expression, text)
+			if name != '' {
+				names << name
+			}
+		}
+	}
+	return names
+}
+
+// attribute_name is what one `@[...]` is called.
+fn attribute_name(expression psi.PsiElement, text string) string {
+	children := expression.children()
+	if children.len == 0 {
+		return ''
+	}
+	head := children.first()
+	return match head.node().type_name {
+		.value_attribute { element_text(head, text) }
+		.if_attribute { element_text(head, text) }
+		.key_value_attribute { key_value_name(head, text) }
+		.literal_attribute { unquoted(element_text(head, text)) }
+		else { '' }
+	}
+}
+
+// key_value_name is the name half of a `@[name: 'value']`.
+//
+// The colon is not the only thing that can follow the name: a call-style
+// attribute with named arguments, `@[deprecated(msg: 'use x')]`, arrives as this
+// same node, and there the name is the part before the parenthesis. Taking the
+// name from the node rather than from the text keeps both readings right.
+fn key_value_name(attribute psi.PsiElement, text string) string {
+	for child in attribute.children() {
+		if child.node().type_name == .value_attribute {
+			return element_text(child, text)
+		}
+	}
+	return ''
+}
+
+// unquoted is a literal attribute's text without the quotes around it, so a route
+// reads as `/index:get` rather than as `'/index':get`. The quotes belong to the
+// source; the label is showing a reader what the declaration is called.
+fn unquoted(body string) string {
+	if body.len < 2 {
+		return body
+	}
+	if (body[0] == `'` || body[0] == `"`) && body[body.len - 1] == body[0] {
+		return body[1..body.len - 1]
+	}
+	return body
+}
+
+// attribute_anchor is where the label is drawn: after the brace a function's body
+// opens with, and after the name of a module, so both land at the end of the
+// declaration rather than at the end of the line the declaration happens to be
+// written on.
+//
+// A declaration with no body, which is a function the compiler is only told the
+// signature of, has nothing after its signature to sit behind.
+fn attribute_anchor(element psi.PsiElement) int {
+	for child in element.children() {
+		if child.node().type_name == .block {
+			return element_start(child) + 1
+		}
+	}
+	return element_end(element)
+}
+
+// attribute_tooltip is the attributes as the source writes them, which is what
+// the label leaves out: `deprecated` names an attribute whose argument the
+// reader still has to read.
+fn attribute_tooltip(attributes []psi.PsiElement, text string) string {
+	mut lines := []string{cap: attributes.len}
+	for attribute in attributes {
+		lines << element_text(attribute, text)
+	}
+	return lines.join('\n')
 }
 
 // defer_hints shows what a defer will run, at the point in its block where it
