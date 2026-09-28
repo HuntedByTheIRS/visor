@@ -19,6 +19,12 @@ import time
 const wait_for_reply_ms = 3000
 const silence_window_ms = 300
 
+// post_open_reply_ms is the window for the first request after a didOpen. That
+// notification is where the buffer's imported modules are indexed, and on a
+// cold machine the server reads no further frame until that finishes. Requests
+// after the first are answered from the index and keep the short window.
+const post_open_reply_ms = 15000
+
 const usage = 'usage: v run tools/lsp_smoke.vsh --bin <server> --fixture <dir> [--update-golden]'
 
 // Framer turns the child's byte stream back into messages. It is a second
@@ -137,9 +143,12 @@ mut:
 	// out_fd is the write end of the child's stdin. Writing through the file
 	// descriptor directly keeps a frame in one write, which is what makes the
 	// request and its cancellation arrive as one batch.
-	out_fd   int
-	checks   int
-	failures int
+	out_fd int
+	// waited_ms is how long the reply that just arrived took. It goes into the
+	// ok line, so a run that got slow says so instead of looking normal.
+	waited_ms int
+	checks    int
+	failures  int
 }
 
 fn (mut r Runner) send(body string) {
@@ -161,9 +170,11 @@ fn (mut r Runner) next(timeout_ms int) ?Message {
 	mut waited := 0
 	for {
 		if body := r.framer.take() {
+			r.waited_ms = waited
 			return decode_message(body)
 		}
 		if waited >= timeout_ms {
+			r.waited_ms = waited
 			return none
 		}
 		if os.fd_is_pending(r.framer.fd) {
@@ -213,7 +224,7 @@ fn (mut r Runner) expect_reply(label string, want_id int, window_ms int) ?Messag
 		r.record(label, false, 'got a ${reply.kind} for id ${reply.id}')
 		return none
 	}
-	r.record(label, true, '')
+	r.record('${label} (${r.waited_ms} ms)', true, '')
 	return reply
 }
 
@@ -547,7 +558,8 @@ fn main() {
 	hover := '{"jsonrpc":"2.0","id":2,"method":"textDocument/hover","params":' +
 		'{"textDocument":{"uri":"${root_uri}"},"position":{"line":7,"character":14}}}'
 	runner.send(hover)
-	if reply := runner.expect_reply('the session keeps answering after a didOpen', 2, wait_for_reply_ms) {
+	if reply := runner.expect_reply('the session keeps answering after a didOpen', 2,
+		post_open_reply_ms) {
 		runner.record('an unknown method gets MethodNotFound (-32601)', reply.err
 			&& reply.ecode == -32601, 'error code ${reply.ecode}')
 	}
