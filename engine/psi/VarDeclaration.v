@@ -10,12 +10,18 @@ pub struct VarDeclaration {
 // The filter and map that upstream chained here lose the element type: the
 // mapped array no longer answers is_equal. The loop builds the same list and
 // keeps the type.
+//
+// Each value goes through a local of the element type first. Pushing a value
+// that V smartcast, or a cast expression, straight into the list writes a
+// pointer where the list holds a whole interface value, and reading the list
+// back hands is_equal a value with no type at all.
 fn (v VarDeclaration) index_of(def VarDefinition) int {
 	first_child := v.first_child() or { return -1 }
 	mut definitions := []PsiElement{}
 	for child in first_child.children() {
 		if child is VarDefinition {
-			definitions << child
+			definition := PsiElement(child)
+			definitions << definition
 		} else if child is MutExpression {
 			last := child.last_child() or { PsiElement(child) }
 			definitions << last
@@ -61,9 +67,11 @@ pub fn (v VarDeclaration) vars() []PsiElement {
 	mut vars := []PsiElement{}
 	for child in first_child.children() {
 		if child is VarDefinition {
-			vars << child
+			variable := PsiElement(child)
+			vars << variable
 		} else if child is MutExpression {
-			vars << (child.last_child() or { PsiElement(child) })
+			last := child.last_child() or { PsiElement(child) }
+			vars << last
 		}
 	}
 	return vars
