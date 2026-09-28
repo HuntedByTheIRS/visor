@@ -102,6 +102,7 @@ fn (s &Server) inlay_hint_options() features.HintOptions {
 		struct_fields: setting_flag(settings, 'structFields', true)
 		types:         setting_flag(settings, 'types', true)
 		defers:        setting_flag(settings, 'defers', true)
+		attributes:    setting_flag(settings, 'attributes', true)
 	}
 }
 

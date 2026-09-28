@@ -214,6 +214,67 @@ fn test_settings_turn_a_family_off() {
 	assert hint_labels_of(reply) == ['x:', 'y:', 'p:', 'factor:']
 }
 
+// A buffer whose module and whose one function both carry attributes, which is
+// what the attribute family has to name.
+const attribute_lane_buffer = '@[translated]
+module main
+
+@[inline]
+fn add(a int) int {
+	return a
+}
+'
+
+// position_after is where a line ends in the buffer: the line a needle is on, and
+// the column just past the needle. The positions are looked up in the text rather
+// than written down, so editing the fixture does not move the expectation.
+fn position_after(text string, needle string) Position {
+	lines := text.split_into_lines()
+	mut line := -1
+	for i, body in lines {
+		if body.contains(needle) {
+			line = i
+			break
+		}
+	}
+	if line < 0 {
+		panic('the buffer has no line holding ${needle}')
+	}
+	return Position{
+		line:      line
+		character: (lines[line].index(needle) or { -1 }) + needle.len
+	}
+}
+
+fn test_the_attribute_family_names_the_declarations_it_belongs_to() {
+	dir := hint_project('attributes')
+	mut sink, mut s := hint_session(dir, 'main.v', attribute_lane_buffer)
+	ask_for_hints(mut s, 'file://${dir}/main.v', none)
+	mut reply := sink.last_message()
+	assert reply.kind == .response, reply.error_text
+	// the module first, then the function, each named where its declaration ends:
+	// after the module name, and after the brace the body opens with
+	assert hint_labels_of(reply) == ['    | translated', '    | inline']
+	assert hint_positions_of(reply) == [
+		position_after(attribute_lane_buffer, 'module main'),
+		position_after(attribute_lane_buffer, 'fn add(a int) int {'),
+	]
+}
+
+fn test_a_setting_turns_the_attribute_family_off() {
+	dir := hint_project('attribute-settings')
+	mut sink, mut s := hint_session(dir, 'main.v', attribute_lane_buffer)
+	ask_for_hints(mut s, 'file://${dir}/main.v', none)
+	assert hint_labels_of(sink.last_message()).len == 2
+
+	s.serve_message(parse_message('{"jsonrpc":"2.0","method":"workspace/didChangeConfiguration",' +
+		'"params":{"settings":{"visor":{"inlayHints":{"attributes":false}}}}}'))
+	ask_for_hints(mut s, 'file://${dir}/main.v', none)
+	reply := sink.last_message()
+	assert reply.kind == .response, reply.error_text
+	assert hint_labels_of(reply) == []
+}
+
 fn test_a_hint_carries_a_position_a_client_can_place() {
 	dir := hint_project('position')
 	mut sink, mut s := hint_session(dir, 'main.v', lane_buffer)

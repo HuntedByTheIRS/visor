@@ -138,9 +138,10 @@ was could read back the previous text's answer. `psi.forget_answers()` drops
 both, and the session calls it whenever a buffer changes.
 
 The walk itself is in `features/inlay_hints.v` and hands back labels with byte
-offsets. Four families are in it: the parameter name an argument lands on, the
-field name a positional struct literal initializes, the type a `:=` infers, and
+offsets. Five families are in it: the parameter name an argument lands on, the
+field name a positional struct literal initializes, the type a `:=` infers,
 the code a `defer` places, shown whole up to two lines and as a snippet past
-that. The wire half is `lsp/inlay_hints.v`. A request the index cannot answer is
-refused in words, because an empty list reads to a client as a buffer with
-nothing worth saying in it.
+that, and the names of the attributes a function or a module carries, drawn
+after the declaration they belong to. The wire half is `lsp/inlay_hints.v`. A
+request the index cannot answer is refused in words, because an empty list
+reads to a client as a buffer with nothing worth saying in it.

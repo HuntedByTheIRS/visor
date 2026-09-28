@@ -104,8 +104,8 @@ something you can install today.
 | Rename | rename and prepare rename | N/A |
 | Symbols | document symbols and workspace symbols | N/A |
 | Selection and view | folding ranges, document highlight, selection range, range formatting | N/A |
-| Semantic tokens | declarations, types, literals, comments, keywords and operators, read from the parse tree | in the tree |
-| Inlay hints | parameter names at call sites, field names in a positional struct literal, the type a `:=` infers, and the code a `defer` places, answered from the workspace index | in the tree |
+| Semantic tokens | declarations, types, literals, comments, attribute names, keywords and operators, read from the parse tree | in the tree |
+| Inlay hints | parameter names at call sites, field names in a positional struct literal, the type a `:=` infers, the code a `defer` places, and the attributes a function or a module carries, answered from the workspace index | in the tree |
 | Code actions | code actions, code lens, call hierarchy | N/A |
 | Formatting | `v fmt` over the whole buffer, on request or on save | in the tree |
 
