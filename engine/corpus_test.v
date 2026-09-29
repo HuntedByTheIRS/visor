@@ -9,9 +9,12 @@ import tree_sitter_v.bindings
 // numbers in CORPUS.md come from this list, and running the file re-measures
 // them against whatever `v` is on PATH.
 //
-// The list was measured against V 0.5.2, commit 1b68924. It is pinned on
-// purpose: a missing file or a file that stops parsing fails the test instead
-// of quietly shrinking the corpus.
+// The list was measured against V 0.5.2, commit `4709647`, the master CI built
+// when it was last re-measured. It is pinned on purpose: a missing file or a
+// file that stops parsing fails the test instead of quietly shrinking the
+// corpus. The compiler is not pinned, so a newer master whose files hold more
+// syntax the grammar does not place raises the count, and the constants below
+// and CORPUS.md move together when that happens.
 const corpus_files = [
 	'builtin/string.v',
 	'builtin/array.v',
@@ -50,7 +53,7 @@ const corpus_files = [
 // yet, and CORPUS.md records where the damage sits. The constants ratchet: a
 // change that parses less of the corpus fails here, and a change that parses
 // more has to lower them and update the report.
-const corpus_error_baseline = 34
+const corpus_error_baseline = 36
 
 const corpus_missing_baseline = 11
 

@@ -1,16 +1,24 @@
 # Corpus report: how much of vlib this grammar parses
 
 The engine owes a parse measurement. These are the numbers this grammar produces
-on a pinned corpus, taken on 2026-09-25.
+on a pinned corpus, first taken on 2026-09-25 and re-measured on 2026-09-28
+against the compiler CI builds.
 
-Environment: V 0.5.2, commit `1b68924`, the compiler `v` resolves to on PATH
-(`/home/specter/v/v`), so the corpus is the vlib shipped with that commit,
-`/home/specter/v/vlib`. The harness finds the vlib directory of whatever `v`
-is on PATH, which is why the pinned list is relative to it.
+Environment: V 0.5.2. The first measurement ran against commit `1b68924`, the
+compiler `v` resolved to on PATH (`/home/specter/v/v`), so the corpus was the
+vlib shipped with that commit, `/home/specter/v/vlib`. The re-measurement ran
+against `4709647`, the master CI builds.
+
+The harness finds the vlib directory of whatever `v` is on PATH, which is why
+the pinned list is relative to it. The list is pinned and the compiler is not:
+the content of those thirty files is whatever that compiler ships, so a newer
+master carrying syntax the grammar does not place raises the count with nothing
+changed here. The two measurements are that happening, and the constants and
+this table move together when it does.
 
 | Command | Observed result | Date |
 | --- | --- | --- |
-| `v -o /tmp/visor-corpus engine/corpus_test.v && /tmp/visor-corpus` | 30 files, 31,406 lines, 379,504 nodes, 34 `ERROR` nodes, 11 `MISSING` nodes, exit 0 | 2026-09-25 |
+| `v -o /tmp/visor-corpus engine/corpus_test.v && /tmp/visor-corpus` | 30 files, 32,019 lines, 389,533 nodes, 36 `ERROR` nodes, 11 `MISSING` nodes, exit 0 | 2026-09-28 |
 | `v test engine/` | 4 test files, 10 test functions, `4 passed, 4 total`, exit 0 | 2026-09-25 |
 
 ## Threshold against measurement
@@ -19,11 +27,13 @@ The plan asks for a corpus that "parses with zero ERROR nodes above a stated
 threshold", and leaves the number to the implementation. The threshold stated
 here is zero `ERROR` nodes and zero `MISSING` nodes over the pinned list.
 
-Measured: **34 `ERROR` nodes and 11 `MISSING` nodes**, so the threshold is not
+Measured: **36 `ERROR` nodes and 11 `MISSING` nodes**, so the threshold is not
 met. Grammar work on the constructs below is what closes the gap.
-`engine/corpus_test.v` asserts the measured baseline (34 and 11) rather than the
+`engine/corpus_test.v` asserts the measured baseline (36 and 11) rather than the
 target, so the corpus cannot get worse without failing, and a change that parses
-more has to lower the constants and update this table.
+more has to lower the constants and update this table. The compiler moving under
+the corpus is the one way the count rises with nothing changed here, which is
+why the measurement above names the commit it ran against.
 
 ## The pinned list
 
@@ -34,7 +44,7 @@ those.
 | # | File (relative to vlib) | Lines | Nodes | ERROR | MISSING |
 | --- | --- | --- | --- | --- | --- |
 | 1 | `builtin/string.v` | 3246 | 32111 | 3 | 0 |
-| 2 | `builtin/array.v` | 1610 | 17706 | 2 | 0 |
+| 2 | `builtin/array.v` | 1617 | 17742 | 2 | 0 |
 | 3 | `builtin/map.v` | 1032 | 12616 | 2 | 0 |
 | 4 | `builtin/autostr.v` | 126 | 1084 | 0 | 0 |
 | 5 | `os/os.v` | 1272 | 11661 | 0 | 0 |
@@ -61,40 +71,45 @@ those.
 | 26 | `io/buffered_reader.v` | 242 | 2288 | 0 | 0 |
 | 27 | `v/token/token.v` | 339 | 3441 | 0 | 0 |
 | 28 | `v/scanner/scanner.v` | 1175 | 14251 | 0 | 1 |
-| 29 | `v/parser/parser.v` | 16620 | 222745 | 19 | 2 |
+| 29 | `v/parser/parser.v` | 17226 | 232738 | 21 | 2 |
 | 30 | `term/term.v` | 233 | 2445 | 0 | 0 |
-| | **30 files** | **31406** | **379504** | **34** | **11** |
+| | **30 files** | **32019** | **389533** | **36** | **11** |
 
-The absolute paths are the vlib root above joined with each name, for example
-`/home/specter/v/vlib/builtin/string.v` and
+Those are absolute paths under the vlib root named above joined with each name,
+for example `/home/specter/v/vlib/builtin/string.v` and
 `/home/specter/v/vlib/v/parser/parser.v`. The list lives in `engine/corpus_test.v`;
 adding a file means adding the name there and re-measuring, and the doc and the
 list have to move together.
 
 ## Where the damage sits
 
-Every `ERROR` node was located and the text under it read, which sorts the 34
+Every `ERROR` node was located and the text under it read, which sorts the 36
 into four unsupported constructs. These are the gaps grammar work should spend
 its budget on, largest first.
 
-**A boolean expression continued on a new line with a leading `||`** (19 of 34,
+**A boolean expression continued on a new line with a leading `||`** (21 of 36,
 all in `v/parser/parser.v`). These are the ones that did not recover:
 
-    v/parser/parser.v:3313    || (!is_name_char(signature[i + 1]) && signature[i + 1] != `.`)
-    v/parser/parser.v:5626    || p.eval_comptime_cond_with_target_override(right_or, disable_target_arch)
-    v/parser/parser.v:6741    || prev_tok in [.lcbr, .semicolon, .comma, .colon, .lpar, .lsbr, .key_return]
+    v/parser/parser.v:3378    || (!is_name_char(signature[i + 1]) && signature[i + 1] != `.`)
+    v/parser/parser.v:5695    || p.eval_comptime_cond_with_target_override(right_or, disable_target_arch)
+    v/parser/parser.v:6866    || prev_tok in [.lcbr, .semicolon, .comma, .colon, .lpar, .lsbr, .key_return]
 
-The file contains 77 lines that start with `||`. Most of them recover as part
-of the expression above; 19 leave a one or two byte `ERROR` where the operator
+The file contains 88 lines that start with `||`. Most of them recover as part
+of the expression above; 21 leave a one or two byte `ERROR` where the operator
 should be.
 
-**A cast to a pointer to an array** (4 of 34, `strings/builder.c.v`):
+The re-measurement added two `ERROR` nodes, both more of that gap:
+`v/parser/parser.v:14723` and `v/parser/parser.v:15021`. Nothing else in the
+corpus moved except `builtin/array.v`, which gained seven lines and kept its two
+`ERROR` nodes.
+
+**A cast to a pointer to an array** (4 of 36, `strings/builder.c.v`):
 
     strings/builder.c.v:141    return unsafe { (&[]u8(b))[n] }
     strings/builder.c.v:269    mut arr := unsafe { &[]u8(b) }
     strings/builder.c.v:292    mut arr := unsafe { &[]u8(b) }
 
-**A `type` alias whose right side is a function type** (4 of 34, three files).
+**A `type` alias whose right side is a function type** (4 of 36, three files).
 The expression is only partly consumed, so what lands is a one byte `ERROR`:
 
     builtin/map.v:188               type MapHashFn = fn (voidptr) u64
@@ -102,10 +117,10 @@ The expression is only partly consumed, so what lands is a one byte `ERROR`:
     datatypes/fsm/fsm.v:5           pub type ConditionFn = fn (receiver voidptr, from string, to string) bool
     cli/command.v:5                 type FnCommandCallback = fn (cmd Command) !
 
-**A unary `!` inside an attribute condition** (2 of 34, `builtin/array.v`):
+**A unary `!` inside an attribute condition** (2 of 36, `builtin/array.v`):
 
-    builtin/array.v:1598    @[if !no_bounds_checking ?; inline]
     builtin/array.v:1605    @[if !no_bounds_checking ?; inline]
+    builtin/array.v:1612    @[if !no_bounds_checking ?; inline]
 
 Two constructs account for the rest and are not in the table because each
 lands inside a larger `ERROR`: a cast to an option, `return ?string(a.clone())`
